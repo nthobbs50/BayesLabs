@@ -1,0 +1,148 @@
+---
+output: html_document
+---
+
+<img src="../Labs/Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+
+### `r fileName="../Labs/Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Course Set Up
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+[I. Motivation][]
+
+[II. Create a GitHub Account][]
+
+[III. Initial clone of the course repository][]
+
+[IV. Ongoing update of course materials][]
+
+[V. EXTREMELY IMPORTANT: Using git course materials][]
+
+[VI. Install course-specific R package ``SESYNCBayes``][] 
+
+
+
+```{r preliminaries, include=FALSE}
+rm(list=ls())
+library(knitr)
+knitr::opts_chunk$set(cache=FALSE, warnings=FALSE, tidy=TRUE)
+```
+
+<br>
+
+#### I. Motivation
+
+To access the course materials you must be able to interact with GitHub and must install our course-specific ``R`` package ``SESYNCBayes``. After completing the initial install of these materials, plan on updating throughout the course as add new content or tweak pre-existing material.  Instructions for the initial setup and ongoing updates are below.
+
+A quick note about GitHub: at the heart of GitHub is an open source version control system (VCS) called Git. Git is responsible for everything GitHub-related that happens locally on your computer. There are a few things that you will need to do to get going with git/GitHub.  Mainly, you must create free a GitHub account and get your machine ready to interact with your account.
+
+<br>
+
+#### II. Create a GitHub account
+
+Do you have a GitHub account?
+
+1. Yes: Great! Know your login credentials.
+
+2. No: go to [https://github.com](https://github.com) and sign up.
+
+<br>
+
+
+#### II. Git install on your machine
+
+Does your computer have git installed?
+
+1. Yes: Great! Potentially lend a hand to fellow students.
+
+2. No: go to [the git set up page here](https://help.github.com/articles/set-up-git) and pick the appropriate operating system and follow the steps associated with the "Setting up Git" section.
+
+<br>
+
+#### III. Initial clone of the course repository
+
+Open terminal/bash and navigate to the directory where you would like to hold the course materials. We recommend the root directory but you can put it anywhere. For the rest of this quick intro we will refer to the path where you wish to put the course materials as ``myPath``.  
+
+1.  To navigate quickly to the root directory type the following terminal/bash window:
+
+    ```bash
+    cd /myPath
+    ```
+
+2.  To clone the course repository into your current directory paste the following into your terminal/bash window: 
+
+    ```bash
+    git clone https://github.com/CCheCastaldo/SESYNCBayes.git
+    ```
+
+<br>
+
+#### IV. Ongoing update of course materials
+
+We plan to update the course repository on a regular basis. It is likely that you will need to update your materials several times per day.  To do this you will ``pull`` a current copy of the repository. To do this: 
+
+1.  You'll need to open your terminal/bash.
+
+2.  Navigate to the course repository (e.g. on my computer I would accomplish this by typing):
+
+    ```bash
+    cd /myPath/SESYNCBayes
+    ```
+    
+3.  Paste the following into the terminal/bash:
+
+    ```bash
+    git pull
+    ```
+
+<br>
+
+#### V. EXTREMELY IMPORTANT: Using git course materials 
+
+As noted in the previous section, each time you ``pull`` and updated version of the course repository your local machine will have a clean (untouched) copy of **all** course materials.  **Therefore, if you modify the course materials it is extremely important that you save your work under a different name.**  If you fail to save your work with a new name, your work will be lost the next time you ``pull`` to get the most up-to-date materials. Where you choose to save your work doesn't matter. You can choose a brand new directory or you can save within the directory that you've created for our course ``SESYNCBayes``. 
+
+Inevitably, you will make an inadvertent or deliberate change to a file in the course materials. In this case, your ``pull`` will fail.  To remedy this:
+
+1.  You'll need to open your terminal/bash.
+
+2.  Execute the following simple steps one at a time in your terminal/bash:
+
+    ```bash
+    git stash
+    git stash drop
+    git pull
+    ```
+<br>
+
+#### VI. Install course-specific R package ``SESYNCBayes`` 
+
+We have prepared an R package that contains all the data you will need to complete our lab exercises.  The package is part of the course materials that you now have on your local machine. You will need to do an initial install of this package and do periodic updates throughout the course. For both the install and update the commands are the same.
+
+1. Run the following line of code in R to install the ``SESYNCBayes`` package from source:
+
+    ```bash
+    install.packages("myPath/SESYNCBayes/Packages/SESYNCBayes_0.1.0.tar.gz", repos = NULL, type = "source")
+    ```
+
+2.  You load the library like any other R library:
+
+    ```bash
+    library(SESYNCBayes)
+    ```
+    
+2.  To see the help files for ``SESYNCBayes`` type in R:
+
+    ```bash
+    ?SESYNCBayes
+    ```
+    
+<br>
+
+
+
+
+    

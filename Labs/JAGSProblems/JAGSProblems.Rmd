@@ -1,0 +1,440 @@
+<style>
+
+/* uncomment out this to generate exercise */
+ .hider {display: none;} 
+
+/* uncomment out this to generate key */
+/* .hider {display: inline;} */
+
+</style>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { 
+      equationNumbers: {
+ 
+            autoNumber: "all",
+            formatNumber: function (n) {return +n}
+      } 
+  }
+});
+</script>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### JAGS Problems
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+[I. Motivation][]
+
+[II. Derived quantities with the logisic example][]
+
+[III. Lizards on islands][]
+
+[IV. References][]
+
+```{r preliminaries, include = FALSE}
+rm(list = ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE)
+
+# uncomment out this to generate key
+# nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+ nokey = TRUE; key = FALSE
+
+set.seed(1)
+```
+
+<br>
+
+#### I. Motivation
+
+JAGS can allow you to implement models of high dimension once you master its syntax and logic.  It is a great tool for ecological analysis. The problems that follow challenge you to:
+
+* Write JAGS code to compute posterior distributions of derived quantities. 
+* Plot plotting model output in revealing ways.
+
+<br>
+
+#### II. Derived quantities with the logisic example
+
+If you are tired of working on the logistic model from the JAGS Primer, save this problem for a lazy Sunday afternoon and skip to this next one.  However, don't skip it forever, there is some good material in here. One of the most useful features of MCMC, is that any quantity that is a function of a random variable becomes a random variable. Consider two quantities of interest that are functions of our estimates of the random variables $r$ and $K$:
+ 
+* The maximum rate of population growth, $\frac{K}{2}$
+* The rate of population growth, $\frac{dN}{dt} = rN\big(1-\frac{N}{K}\big)$
+
+Answer the following questions:
+
+1. Estimate the posterior distribution of the maximum rate of growth and plot its density. 
+
+``` {r, eval = TRUE, echo = key, include = key}
+{ # Extra bracket needed only for R markdown files
+sink("LogisticJAGS.R")
+cat(" 
+model{
+  # priors
+  K ~ dunif(0, 4000)
+  r ~ dunif (0, 2)
+  sigma ~ dunif(0, .5) 
+  tau <- 1/sigma^2
+  
+  # likelihood
+  for(i in 1:n){
+    mu[i] <- r - r/K * x[i]
+    y[i] ~ dnorm(mu[i], tau)
+  }
+
+  # derived quantities	
+  # calculate maximum growth rate	
+  kMax <- K/2
+  # calculate growth rate over range of N values. N must be read in as data:
+  for (j in 1:length(N)){
+    dNdt[j] <- r * N[j] * (1 - N[j]/K)
+  }
+} 
+",fill = TRUE)
+sink()
+} # Extra bracket needed only for R markdown files
+```
+
+``` {r, eval = TRUE, echo = key, include = key}
+library(SESYNCBayes)
+library(rjags)
+set.seed(1)
+
+Logistic <- Logistic[order(Logistic$PopulationSize),]
+
+inits = list(
+  list(K = 1500, r = .2, sigma = .01),
+  list(K = 1000, r = .15, sigma = .5),
+  list(K = 900, r = .3, sigma = .01))
+
+N <- seq(0,1500,10)
+N[1] <- 1
+
+data = list(
+  n = nrow(Logistic),
+  x = as.double(Logistic$PopulationSize),
+  y = as.double(Logistic$GrowthRate),
+  N = N)
+
+n.adapt = 5000
+n.update = 10000
+n.iter = 10000
+
+jm = jags.model("LogisticJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm, n.iter = n.update)
+zm = coda.samples(jm, variable.names = c("K", "r", "sigma", "kMax"), n.iter = n.iter, n.thin = 1)
+zj = jags.samples(jm, variable.names = c("r", "kMax", "dNdt"), n.iter = n.iter, n.thin = 1)
+```
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 8, fig.height = 8, fig.align = 'center'}
+summary(zm)
+plot(zm)
+gelman.diag(zm, multivariate = FALSE)
+```
+
+2. Plot the median population growth rate rate and 95% credible intervals as a function of $N$. What does this curve tell you about the difficulty of sustaining harvest of populations?
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 5, fig.height = 5, fig.align = 'center'}
+b <- summary(zj$dNdt, quantile, c(.025, .5, .975))$stat 
+plot(N, b[2,], xlab = "N", ylab = "Population growth rate", type = "l", ylim = c(-40, 80))
+lines(N, b[1,], lty = "dashed")
+lines(N, b[3,], lty = "dashed")
+```
+
+3. What is the probability that the intrinsic rate of increase $(r)$ exceeds .22? What is the probability that $r$ falls between .18 and .22? 
+
+``` {r, eval = TRUE, echo = key, include = key}
+ecdf(zj$r[1,,])(.22) - ecdf(zj$r[1,,])(.18)
+1 - ecdf(zj$r[1,,])(.22)
+```
+
+Some hints:
+
+* Include expressions for each derived quantity in your JAGS code. 
+* You will need to give JAGS a vector of $N$ values to plot $\frac{dN}{dt}$ vs $N$.
+* Use a JAGS object for plotting the rate of population growth.
+* Look into using the ``ecdf()`` function on a JAGS object. It is covered in the JAGS primer.
+
+<br>
+
+#### III. Lizards on islands
+
+Here is the lizards on islands problem, courtesy of McCarthy (2007). Polis et al. (1998) analyzed the probability of occupancy of islands (p) by lizards as a function of the ratio of the islands’ perimeter to area ratio. The data from this investigation are available in the data frame ``IslandLizards``. The response data, as you will see, are 0-1, 0 if there were no lizards found on the island, 1 if there were 1 or more lizards observed. You are assuming that if you fail to find a lizard, none are present on the island. 
+
+1. You construct a simple Bayesian model that represents the probability of occupancy as $\textrm{logit}\big(p_i\big)=a+bx_{i}$ where $x_{i}$ is the perimeter to area ratio of the $i^{th}$ island. So, now that you have the deterministic model, the challenge is to choose the proper likelihood to link the data to the model. How do the data arise? What likelihood function is needed to represent the data? 
+
+<div class="hider">
+The data arise as presence/absence draws from a Bernoulli distribution whose probability of presence is a function of the perimeter to area ratio as specified above.
+</div>
+
+2. Write out the expression for the posterior and joint distribution of the parameters and data, as we have learned how to do in lecture. Use the joint distribution as a basis for JAGS code needed to estimate the posterior distribution of a and b. You may assume vague priors. Think about what these should be.
+
+<div class="hider">
+\begin{eqnarray}
+\big[a, b \mid \textbf{y}\big] & \propto & 
+\prod_{i = 1}^{19}\textrm{Bernoulli}\big(y_{i}\mid p\big)\,\textrm{normal}\big(a\mid,0,10000\big)
+\textrm{normal}\big(b\mid,0,10000\big)\\[1em]
+p & = & \textrm{logit}^{-1}\big(a + bx_{i}\big)
+\end{eqnarray}
+</div>
+
+``` {r, eval = TRUE, echo = key, include = key}
+{ # Extra bracket needed only for R markdown files
+sink("IslandJAGS.R")
+cat("
+model{
+# priors
+  a ~ dnorm(0, 1.0E-6) 
+  b ~ dnorm(0, 1.0E-6) 
+
+# likelihood
+  for (i in 1:n){
+    logit(p[i]) <- a + b*x[i] 
+    y[i] ~ dbern(p[i])
+  }
+
+} #end of model
+",fill = TRUE)
+sink()
+} # Extra bracket needed only for R markdown files
+```
+
+3. Using JAGS, run MCMC for three chains. Selecting initial conditions can be a bit tricky with the type of likelihood you will use here. You may get the message "Error in jags.model("IslandsJags.R", data = data, inits, n.chains = length(inits), : Error in node y[4] Observed node inconsistent with unobserved parents at initialization". To overcome this, try the following:
+
+* Center or scale the the perimeter to area ratio covariate using the ``scale`` function in R. Review the Bayesian Regression I lecture for details.
+* Choose initial values for $a$ and $b$ so that $\textrm{logit}^{-1}\big(a + bx_{i}\big)$ is between .01 and .99. 
+
+``` {r, eval = TRUE, echo = key, include = key}
+library(SESYNCBayes)
+library(rjags)
+set.seed(1)
+
+inits = list(
+  list(a = runif(1, -2, 2), b = runif(1, -2, 2)),
+  list(a = runif(1, -2, 2), b = runif(1, -2, 2)),
+  list(a = runif(1, -2, 2), b = runif(1, -2, 2)))
+
+data = list(
+  n = nrow(IslandLizards),
+  x = as.double(scale(IslandLizards$perimeterAreaRatio)),
+  y = as.double(IslandLizards$presence))
+
+n.adapt = 5000
+n.update = 10000
+n.iter = 10000
+
+jm = jags.model("IslandJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm, n.iter = n.update)
+zm = coda.samples(jm, variable.names = c("a", "b"), n.iter = n.iter, n.thin = 1)
+```
+
+4. Do a plot of the posterior density and the trace of the chain using the ``plot(zm)``. Does the trace indicate convergence? How can you tell? Use Gelman and Heidel diagnostics to check for convergence.
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 8, fig.height = 5, fig.align = 'center'}
+summary(zm)
+plot(zm)
+gelman.diag(zm)
+heidel.diag(zm)
+```
+
+5. Plot the data as points and a line plot of the median and 95% credible intervals of the predicted probability of occurrence as a function of island perimeter to area ratios ranging from 1-60. Hint--create a vector of 1-60 in R, and use it as x values for an equation making predictions in your JAGS code. Use a JAGS object for plotting. This makes a nice smooth curve. (The curve is jumpy if you simply plot the predictions at the island perimeter to area data points.)
+
+``` {r, eval = TRUE, echo = key, include = key}
+{ # Extra bracket needed only for R markdown files
+sink("IslandJAGS.R")
+cat("
+model{
+# priors
+  a ~ dnorm(0, 1.0E-6) 
+  b ~ dnorm(0, 1.0E-6) 
+
+# likelihood
+  for (i in 1:n){
+    logit(p[i]) <- a + b*x[i] 
+    y[i] ~ dbern(p[i])
+  }
+
+# derived quantities
+  for (j in 1:length(PA)){
+  	pHat[j] <- ilogit(a + b*PA[j])
+  }
+
+} #end of model
+",fill = TRUE)
+sink()
+} # Extra bracket needed only for R markdown files
+```
+
+
+``` {r, eval = TRUE, echo = key, include = key}
+inits = list(
+  list(a = runif(1, -2, 2), b = runif(1, -2, 2)),
+  list(a = runif(1, -2, 2), b = runif(1, -2, 2)),
+  list(a = runif(1, -2, 2), b = runif(1, -2, 2)))
+
+x <- scale(IslandLizards$perimeterAreaRatio)
+mu <- attr(x, "scaled:center")
+sd <- attr(x, "scaled:scale")
+PA <- (seq(1,60,.5) - mu)/sd
+
+data = list(
+  n = nrow(IslandLizards),
+  x = as.double(x),
+  y = as.double(IslandLizards$presence),
+  PA = as.double(PA))
+    
+n.adapt = 5000
+n.update = 10000
+n.iter = 10000
+
+jm = jags.model("IslandJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm, n.iter = n.update)
+zj = jags.samples(jm, variable.names = c("pHat"), n.iter = n.iter, n.thin = 1)
+```
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 8, fig.height = 5, fig.align = 'center'}
+pHat = summary(zj$pHat, quantile, c(.025, .5, .975))$stat
+
+plot(IslandLizards$perimeterAreaRatio, IslandLizards$presence, xlab = "Perimeter to Area Ratio", ylab = "Probability Occupied", pch = 16, col = "red")
+lines(seq(1,60,.5), pHat[2,], type = 'l')
+lines(seq(1,60,.5), pHat[1,], lty = "dashed")
+lines(seq(1,60,.5), pHat[3,], lty = "dashed")
+```
+
+6. Assume you are interested in 2 islands, one that has a perimeter to area ratio of 10, the other that has a perimeter to area ratio of 20. What is the 95% credible interval on the difference in the probability of occupancy of the two islands based on the analysis you did above? 
+
+``` {r, eval = TRUE, echo = key, include = key}
+{ # Extra bracket needed only for R markdown files
+sink("IslandJAGS.R")
+cat("
+model{
+# priors
+  a ~ dnorm(0, 1.0E-6) 
+  b ~ dnorm(0, 1.0E-6) 
+
+# likelihood
+  for (i in 1:n){
+    logit(p[i]) <- a + b*x[i] 
+    y[i] ~ dbern(p[i])
+  }
+
+# derived quantities
+  for (j in 1:length(PA)){
+  	pHat[j] <- ilogit(a + b*PA[j])
+  }
+
+  p10 <- exp(a + b*(10 - mu)/sd) / (1 + exp(a + b*(10 - mu)/sd))
+  p20 <- exp(a + b*(20 - mu)/sd) / (1 + exp(a + b*(20 - mu)/sd))
+  diff <- p10 - p20
+
+} #end of model
+",fill = TRUE)
+sink()
+} # Extra bracket needed only for R markdown files
+```
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 8, fig.height = 5, fig.align = 'center'}
+data = list(
+  n = nrow(IslandLizards),
+  x = as.double(x),
+  y = as.double(IslandLizards$presence),
+  PA = as.double(PA),
+  mu = mu,
+  sd = sd)
+
+jm = jags.model("IslandJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm, n.iter = n.update)
+zm = coda.samples(jm, variable.names = c("diff"), n.iter = n.iter, n.thin = 1)
+zj = jags.samples(jm, variable.names = c("diff", "pHat"), n.iter = n.iter, n.thin = 1)
+summary(zm)
+plot(density(zj$diff), main = "", xlab = "Difference between PA ratio 10 - 20", ylab = "Probability Density")
+```
+
+7. What fundamentally important source of error are we sweeping under the rug in all of these fancy calculations? What are the consequences of failing to consider this error for our estimates? Do you have some ideas about how we might cope with this problem? 
+
+<div class="hider">
+We are ignoring detection, which can bias p upwards if detection < 1 or bias $a$ and $b$ if detection depends on island's perimeter to area ratio. If you have replicated lizard surveys at each island within a time frame where you can assume "true" lizard presence or absence does not change (this is called the closure assumption) or you have informed priors on detection rates, you can use latent states to model the detection process simultaneously with the occupancy process. We will do this later in the course so stay tuned!
+</div>
+
+Here is a somewhat advanced topic. 
+
+8. The priors you chose above were vague for the intercept and slope in the logistic regression but they were *not* vague for  $p_{i}$.  This is generally true for the output of nonlinear functions like the inverse logit (Lunn et al., 2012; Seaman et al., 2012). For an explanation of this particular case (a logistic regression), see Hobbs and Hooten (2015) section 5.4.1. Rerun you analysis using priors on the coefficients that are vague for inference on $p$ based on what you learned in Hobbs and Hooten (be careful to convert variances to precision.)  Plot the probability of occupancy as a function of perimeter to area ratio using these priors and compare with the plot you obtained in exercise 5, above. You will see that the means of the $p_{i}$ changes and uncertainty about $p_{i}$ increases when you use appropriately vague priors.
+
+``` {r, eval = TRUE, echo = key, include = key}
+{ # Extra bracket needed only for R markdown files
+sink("IslandJAGS.R")
+cat("
+model{
+# priors
+  a ~ dnorm(0, .368) 
+  b ~ dnorm(0, .368) 
+
+# likelihood
+  for (i in 1:n){
+    logit(p[i]) <- a + b*x[i] 
+    y[i] ~ dbern(p[i])
+  }
+
+# derived quantities
+  for (j in 1:length(PA)){
+  	pHat[j] <- ilogit(a + b*PA[j])
+  }
+
+} #end of model
+",fill = TRUE)
+sink()
+} # Extra bracket needed only for R markdown files
+```
+
+
+``` {r, eval = TRUE, echo = key, include = key}
+jm = jags.model("IslandJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm, n.iter = n.update)
+zj2 = jags.samples(jm, variable.names = c("pHat"), n.iter = n.iter, n.thin = 1)
+```
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 8, fig.height = 5, fig.align = 'center'}
+pHat2 = summary(zj2$pHat, quantile, c(.025, .5, .975))$stat
+
+plot(IslandLizards$perimeterAreaRatio, IslandLizards$presence, xlab = "Perimeter to Area Ratio", ylab = "Probability Occupied", pch = 16, col = "red")
+lines(seq(1,60,.5), pHat[2,], type = 'l')
+lines(seq(1,60,.5), pHat[1,], lty = "dashed")
+lines(seq(1,60,.5), pHat[3,], lty = "dashed")
+lines(seq(1,60,.5), pHat2[2,], type = 'l', col = "blue")
+lines(seq(1,60,.5), pHat2[1,], lty = "dashed", col = "blue")
+lines(seq(1,60,.5), pHat2[3,], lty = "dashed", col = "blue")
+```
+
+9. If this were really your problem, what could you do? There are two possibilities.  First, get more data so that the influence of the prior becomes small. Second, use informative priors on the coefficients, even weakly informative ones. For example, you *know* that the slope should be negative and you *know* something about the probability of occupancy when islands are large. Centering the slope on a negative value makes sense because we know from many other studies that the probability of occupancy goes down as islands get smaller. Moreover, you could center the prior on the intercept on 3 using the reasoning that large islands are almost certainly occupied (when intercept = 3, p = .95 at PA = 0). Centering the priors on reasonable values (rather than 0) will make the results more precise and far less sensitive to the variance (or precision) chosen for the prior. 
+
+<br>
+
+#### IV. References
+
+McCarthy, M.A. 2007. *Bayesian Methods for Ecology*. Cambridge University Press, Cambridge, United Kingdom.
+
+Polis, G.A., S.D. Hurd, C.T. Jackson, and F. Sanchez-Pinero, 1998. Multifactor population limitation: Variable spatial and temporal control of spiders on gulf of California islands. Ecology 79:490–502.
+
+Seaman III, J.W., J.W. Seaman Jr., and J.D. Stamey. 2012. Hidden dangers of specifying noninformative priors. The American Statistician 66, 77-84
+
+Hobbs, N. T. and M. B. Hooten. 2015. *Bayesian models: A statistical primer for ecologists*. Princeton University Press, Princeton, New Jersey, USA.
+
+Lunn, D., C. Jackson, N. Best, A. Thomas, and D. Spiegelhalter. 2012. *The BUGS book: A practical introduction to Bayesian analysis*. CRC Press, Boca Raton, Florida, USA.
+
+```{r echo = FALSE}
+unlink("IslandJAGS.R", recursive = FALSE, force = FALSE)
+unlink("LogisticJAGS.R", recursive = FALSE, force = FALSE)
+```

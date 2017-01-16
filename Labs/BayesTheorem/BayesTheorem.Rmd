@@ -1,0 +1,270 @@
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { 
+      equationNumbers: {
+ 
+            autoNumber: "all",
+            formatNumber: function (n) {return +n}
+      } 
+  }
+});
+</script>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### The Components of Bayes Theorem
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+[I. Motivation][]
+
+[II. Problem][]
+
+[III. Preliminaries][]
+
+[IV. The prior distribution of $\theta$][]
+
+[V. The likelihood][]
+
+[VI. The joint distribution][]
+
+[VII. The marginal probability of the data][]
+
+[VIII. The posterior distribution][]
+
+[IX. Putting it all together][]
+
+
+```{r preliminaries, include = FALSE}
+rm(list = ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE)
+
+# uncomment out this to generate key
+# nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+ nokey = TRUE; key = FALSE
+
+set.seed(1)
+```
+
+<br>
+
+#### I. Motivation
+
+Bayesian analysis is flexible and intuitive because it uses the same approach to all problems.  We learn about unobserved quantities from observed ones using the laws of probability as an inferential scaffolding. You derived Bayes' Theorem in lecture from those basic laws.  We learned that all Bayesian models have the same parts: the posterior distribution, the joint distribution composed of the likelihood(s) and priors, and and the marginal probability of the data, which serves as a normalizing constant after the data are collected.  For most of this course, we will exploit the proportionality between the posterior and the joint to allow us to dispense with the marginal probability of the data using simulation methods. However, it is vital that you understand the relationship among the component of Bayes' Theorem before we do that. This understanding is the foundation for all of the powerful methods that follow. It is what sets Bayesian analysis apart from maximum likelihood.
+
+This problem is a bit of a toy because you will never estimate posterior distributions this way, at least we never have. But, it is an instructive toy. Reliably using Bayesian methods requires understanding how Bayes' theorem works. The best way to gain this understanding is to compute a posterior distribution from its component parts, the prior, the likelihood, and the marginal distributions. It helps you understand how you multiply and divide by statistical distributions, something you probably don't do every morning after coffee.  You will be thrilled to know that you only need to do this once.
+
+To start, take out your notes on Bayes' theorem and go through its derivation, particularly the color-coded section on the likelihood, the prior, the joint, and the probability of the data. Keep the equation in front of you as you do this exercise. Think about what each piece means as you write your code. 
+
+The key to success is to create code that does the following: 1) creates vectors using the probability density functions in the numerator of Bayes' theorem (the likelihood and the prior), 2) multiplies these vectors to obtain the joint distribution of the parameters and the data, 3) integrates the joint distribution and 4) divides the joint distribution by its integral. Voila.
+
+<br>
+
+#### II. Problem
+
+You are interested in estimating the posterior distribution for the mean number of individuals of an invasive plant species per m^2^ in a disturbed grassland. We will call that mean $\theta$. You have prior information telling you that the average number of these plants per m^2^ is 10.2 with a standard deviation of the mean = .5. You have a set of fifty observations in hand obtained by sweaty labor in the field. Execute the following steps. 
+
+<br>
+
+#### III. Preliminaries
+
+1. Simulate 50 data points from a Poisson distribution with mean $\theta$ = 6.4  to represent the data set. (This portrays the data that you gathered from plots, but it is lots easier to obtain.) What is the variance? Be sure to put the R function `set.seed(3)` before the call to `rpois()` to assure that we all get the same results. Call the data vector `y`. 
+
+2. Plot a histogram of the data with density on the y-axis. It turns out that the histogram function in R is not really appropriate for discrete data (why?). Here is a chance to write a function that plots discrete data properly! Hint-- the `count()` function in the `plyr` package and the `type="h"` argument in the `plot` function might prove useful. (You can skip this discrete histogram bit with no loss of value from the rest of the exercise, but if you do, we urge you to revisit it sometime.)
+
+3. Set values for the prior mean (`mu.prior`) and standard deviation (`sigma.prior`).
+
+```{r fig.widght=6, fig.height=5, fig.align = 'center', echo = key, include = key}
+# set random number generator
+set.seed(3)
+
+# simulate the data
+y <- rpois(50, lambda = 6.4)
+
+# histogram of the data
+hist(y, freq = FALSE, breaks = 10, main = "Histogram of data", col = "gray")
+
+# custom function for improved histogram of the data
+library(plyr)
+
+discrete_hist <- function(y) {
+  z <- count(y)
+  z$dens <- z$freq/sum(z$freq)
+  plot(z$x, z$dens, type = "h", ylab = "Probability", xlab = "y", main = "Improved histogram of data", 
+    frame = FALSE, xaxt = "n", lwd = 3, col = "blue")
+  x <- seq(min(z$x), max(z$x), 1)
+  axis(side = 1, at = x, labels = x)
+}
+discrete_hist(y)
+
+# prior mean and standard deviation
+mu.prior <- 10.2
+sigma.prior <- 0.5
+```
+
+4. Set up a vector containing a sequence of values for $\theta$, the mean number of invasive plants, You want this vector to approximate a continuous $\theta$ so be sure it contains values that are not too far apart. Use code like this: `theta = seq(0,15,step)` where you set `step = .01`. Setting a value for `step` with global scope is important. You will use it later when you integrate.
+
+```{r, echo = key, include = key}
+step <- .01
+theta <- seq(0, 15, step)
+```
+
+<br>
+
+#### IV. The prior distribution of $\theta$
+
+5. Write a function for the prior on $\theta$. To exercise your knowledge of moment matching, use a gamma distribution for the prior, which may require a quick consultation with the distribution cheat sheet. The function for the prior should return a vector of gamma probability densities, one for each value of $\theta$. It should have arguments 1) the vector for $\theta$ you created in the previous step as well as 2) the prior mean and 3) the prior standard deviation. The mean and the standard deviation, of course, will need to be moment-matched to the proper parameters of the gamma distribution.
+
+```{r eval = FALSE, include = TRUE, echo = nokey}
+prior <- function(theta, mu = mu.prior, sigma = sigma.prior){#code implementing function}
+```
+
+```{r echo = key, include = key}
+prior <- function(theta, mu = mu.prior, sigma = sigma.prior) dgamma(theta, mu^2 / sigma^2, mu / sigma^2)
+```
+
+So, in this case `mu.prior = 10.2` and `sigma.prior = .5`. You could hard-code these in the function template, but that is bad practice. 
+  
+6. Plot the prior distribution of $\theta$, the probability density of $\theta$ as a function of the values of $\theta$.
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+plot(theta, prior(theta), type = "l", ylab = expression(paste("[", theta, "]")), xlab = expression(theta),
+  main = "Prior", xlim = c(5, 15))
+```
+
+7. Check your moment matching by generating 100,000 random variates from a gamma distribution with parameters matched to the prior mean and standard deviation. Now compute the mean and standard deviation of the random variates. They should be very close to 10.2 and .5.
+
+
+```{r echo = key, include = key}
+sd(rgamma(100000, mu.prior^2 / sigma.prior^2, mu.prior / sigma.prior^2))
+mean(rgamma(100000, mu.prior^2 / sigma.prior^2, mu.prior / sigma.prior^2))
+```
+
+<br>
+
+#### V. The likelihood
+
+8. Write a function for the likelihood. The function must use all 50 observations to compute the *total* likelihood across all of the data points (not the log likelihood) for each value of the vector $\mathbf{\theta}$. It should have arguments for the vector $\mathbf{\theta}$ and the data. The function should create and return a vector with elements $[\mathbf{y}\mid\theta_{i}]$. Note that this is the total probability density of all of the data for *each* value of $\theta_i$, not the probability density of a single data point. In reality, $\theta$ is a continuous random variable, the mean of the Poisson distribution. We are discretizing it here into small intervals. The function template will be something like:
+
+```{r eval = FALSE, include = TRUE, echo = nokey}
+like <- function(theta, y){#code to calculate total likelihood of the data conditional on each value of theta}
+```
+
+```{r echo = key}
+like <- function(theta, y){
+  L = rep(0, length(theta))
+	for(i in 1:length(theta)) L[i] = prod(dpois(y, theta[i], log = FALSE))
+	return(L)
+} 
+```
+
+9. Plot the likelihood of the parameter value conditional on the data, $L(\theta_{i} \mid \mathbf{y})$ as a function of $\theta_{i}$. Recall $L(\theta_{i} \mid \mathbf{y})$ is proportional to $[\mathbf{y} \mid \theta_{i}]$. We assume the constant of proportionality = 1. What is this plot called? Can you say anything about the area under the curve? What happens to inference we can make based on likelihood if we multiply the curve by a constant?
+  
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+plot(theta, like(theta, y = y), type = "l", xlim = c(5, 15), main = "Likelihood", xlab = expression(theta), 
+  ylab = expression(paste("[y|", theta, "]")))
+```
+
+<br>
+
+####VI. The joint distribution
+
+10. Create a function for the joint distribution of the parameters and the data as the product of the prior and the likelihood functions.  Call this function joint. The function should simply call the previous two functions and multiply them. Recall that when a function is composed of a single statement as it is here, the statement can simply follow the function template on the same line; curly brackets are not needed. Plot `joint(theta)` as a function of `theta`. Does this seem reasonable? Why are the values on the y axis so small? Think about what is going on here.
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+joint = function(theta) like(theta, y = y) * prior(theta)
+
+plot(theta, joint(theta), type = "l",  main = "Joint", xlim = c(5, 15), xlab = expression(theta),
+  ylab = expression(paste("[y|", theta, "] x [", theta, "]")))
+```
+
+<br>
+
+#### VII. The marginal probability of the data
+
+11. Approximate the integral of the likelihood multiplied by the prior to obtain a normalization constant $[\mathbf{y}]$. How would you accomplish this integration?  (Hint--Recall the first principles definition of the definite integral.)  What is this mathematical expression for this integral? Explain the output of this integration, a scalar. Why do we call $[\mathbf{y}]$ a "distribution" if it evaluates to a scalar?
+
+```{r echo = key, include = key}
+(Py <- sum(like(theta, y = y) * prior(theta) * step))
+```
+
+<br>
+
+#### VIII. The posterior distribution
+
+12. Compute the posterior distribution by dividing each element of the vector of output produced by the joint function by the integral of the joint function. Plot the posterior as a function of $\theta$.
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+P.theta <- p.theta <- joint(theta) / Py
+
+plot(theta, p.theta, typ = "l", xlim = c(5, 15), main = "Posterior", xlab = expression(theta), 
+  ylab = expression(paste("[ ", theta, " | y]")))
+```
+
+<br>
+
+#### IX. Putting it all together
+
+13. Plot the prior, a histogram of the data, the likelihood, the joint, and the posterior in a six panel layout. Your results should be the same as the plot below:
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key}
+par(mfrow = (c(2, 3)))
+plot(theta, prior(theta), type = "l", ylab = expression(paste("[", theta, "]")), xlab = expression(theta),
+  main = "Prior", xlim = c(5, 15))
+
+hist(y, freq = FALSE, breaks = 10, main = "Histogram of data")
+discrete_hist(y = y)
+
+plot(theta, like(theta, y = y), type = "l", main = "Likelihood", xlim = c(5, 15), xlab = expression(theta),
+  ylab = expression(paste("[y|", theta, "])")))
+plot(theta, joint(theta), type = "l", main = "Likelihood", xlim = c(5, 15), xlab = expression(theta),
+  ylab = expression(paste("[y | ", theta, "]) x [", theta, "]")))
+plot(theta, p.theta, type = "l", xlim = c(5, 15), main = "Posterior", xlab = expression(theta),
+  ylab = expression(paste("[ ", theta, " | y]")))
+```
+
+14. Overlay the prior, the likelihood, and the posterior on a single plot. To do this, you will need to rescale the likelihood, which of course is OK because it is defined up to an arbitrary, multiplicative constant, i.e., $[\mathbf{y} \mid \theta] = cL\left(\theta \mid \mathbf{y}\right)$. It doesn't matter what c is. We can rescale the likelihood to any value we like and the inference doesn't change because all evidence is relative in the likelihood framework. Do the following to obtain a scaled likelihood that can be plotted in a revealing way next to the posterior distribution. Divide each element in the likelihood vector by the maximum likelihood (thus, the maximum becomes 1). Multiply the resulting vector by the maximum value of the posterior density. Simple.
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+(c <- max(p.theta) / max(like(theta, y)))
+like.scaled <- c * like(theta, y)
+
+par(mfrow=c(1, 1))
+plot(theta, like.scaled, type = "l", col = "red", xlim = c(5,15), xlab = expression(theta),
+  main = "Scaled Overlay", ylab = "Probability density")
+lines(theta, prior(theta), col = "blue")
+```
+  
+15. Check to be sure that everything is correct using the gamma-Poisson *conjugate* relationship. A gamma distribution is the conjugate for the Poisson likelihood, which is something you will soon learn about in lecture. If we have a gamma prior and a Poisson likelihood, then the posterior is a gamma distribution with parameters $\alpha\,+\,\sum_{i=1}^{n}y_{i}$ and $\beta\,+\,n$, where $\alpha$ and $\beta$ are the parameters of the gamma prior, and we have $n$ observations $(\,y_{i}\,)$ of new data.  Overlay a plot of the posterior obtained using the conjugate on the plot of the posterior obtained by integration. Take a look at your scaled overlay of the posterior, the likelihood, and the prior. The likelihood profile is based on the data but it shows much less dispersion than the distribution of the data shown in the histogram you constructed. Why?
+  
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+# Calculate the posterior using gamma-Poisson conjugate relationship and overlay on the integrated posterior
+p.conj = dgamma(theta, sum(y) + mu.prior^2 / sigma.prior^2, length(y) + mu.prior / sigma.prior^2)
+
+par(mfrow=c(1, 1))
+plot(theta, like.scaled, type = "l", col = "red", xlim = c(5,15), xlab = expression(theta), 
+  ylab = "Probability density", main = "Scaled Overlay")
+lines(theta, prior(theta), col = "blue")
+lines(theta, p.conj, type = "l", lwd = 1, col = "orange")
+lines(theta, p.theta, col = "black", lwd = 4, type = "l", lty = "dashed")
+
+legend(11, 1.2, legend= c("Scaled likelihood", "Prior","Integrated posterior", "Conjugate posterior"), cex = .8, 
+  lwd = 2, bty = "n", col = c("red", "blue", "black", "orange"), lty = c("solid", "solid", "dashed", "solid"))
+```
+
+16. Now that you have these lovely functions working and plots emerging from them, do some experiments to understand the effect of prior information on the posterior distribution of $\theta$ relative to the effect of the data. Increase the variance of the prior distribution to 2.5. Reduce it to .1. Increase the number of observations from 50 to 100. Examine the overlaid plots you produced above for each case.
+
+17. Gather some classmates and discuss the position of the prior, likelihood and posterior along the x axis and their variances.
+
+<br>
