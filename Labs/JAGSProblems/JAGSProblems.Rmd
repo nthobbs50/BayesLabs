@@ -27,6 +27,7 @@ output: html_document
 <img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
 
 ### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+### `r fileName="../Subtitle.txt";readChar(fileName,file.info(fileName)$size)`
 #### JAGS Problems
 #### `r format(Sys.Date(), format="%B %d, %Y")`
 
