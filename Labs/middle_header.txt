@@ -1,4 +1,4 @@
 \usepackage{fancyheadings}
 \pagestyle{fancy}
-\lhead{SESYNC Modeling Course}
-\rhead{August 1-10 2016}
+\lhead{NSF DBI-1052875}
+\rhead{NSF DEB-1145220}

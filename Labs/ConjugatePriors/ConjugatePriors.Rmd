@@ -1,10 +1,10 @@
 <style>
 
 /* uncomment out this to generate exercise */
-/* .hider {display: none;} */
+#.hider {display: none;} 
 
 /* uncomment out this to generate key */
-.hider {display: inline;}
+ .hider {display: inline;}
 
 </style>
 
@@ -15,6 +15,7 @@ output: html_document
 <img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
 
 ### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+### `r fileName="../Subtitle.txt";readChar(fileName,file.info(fileName)$size)`
 #### Using Conjugate Priors Lab
 #### `r format(Sys.Date(), format="%B %d, %Y")`
 
@@ -40,10 +41,10 @@ library(knitr)
 knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE, messages = FALSE)
 
 # uncomment out this to generate key
- nokey = FALSE; key = TRUE
+#nokey = FALSE; key = TRUE
 
 # uncomment out this to generate exercise
-# nokey = TRUE; key = FALSE
+nokey = TRUE; key = FALSE
 ```
 
 <br>
@@ -237,10 +238,11 @@ You have collected temperature data on the December solstice for the last 50 yea
 (muPost <-((muPrior/varPrior) + y/varKnown)/((1/varPrior) + (n/varKnown)))
 (varPost <- 1/((1/varPrior) + (n/varKnown)))
 
-prior <- function(x) dnorm(x, muPrior, varPrior)
-post <- function(x) dnorm(x, muPost, varPost)
+prior <- function(x) dnorm(x, muPrior, varPrior^.5)
+post <- function(x) dnorm(x, muPost, varPost^.5)
 
-plot(prior, 0, 60, main = "Normal prior (dash) and normal posterior (red)", xlab = expression(mu), ylab = "Density", lty = 2, ylim = c(0,0.1), lwd = 2)
+plot(prior, 0, 60, main = "Normal prior (dash) and normal posterior (red)", xlab = expression(mu), 
+  ylab = "Density", lty = 2, ylim = c(0, 0.2), lwd = 2)
 plot(post, 0, 60, add = TRUE, col = "red", lwd = 2)
 ```
 

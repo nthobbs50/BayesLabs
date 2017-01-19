@@ -5,6 +5,7 @@ output: html_document
 <img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
 
 ### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+### `r fileName="../Subtitle.txt";readChar(fileName,file.info(fileName)$size)`
 #### JAGS Primer Answers
 #### `r format(Sys.Date(), format="%B %d, %Y")`
 
@@ -126,7 +127,7 @@ model{
   # priors
   K ~ dunif(0, 4000)
   r ~ dunif (0, 2)
-  sigma ~ dunif(0, .5) 
+  sigma ~ dunif(0, 100) 
   tau <- 1/sigma^2
   
   # likelihood
@@ -152,9 +153,9 @@ set.seed(1)
 Logistic <- Logistic[order(Logistic$PopulationSize),]
 
 inits = list(
-  list(K = 1500, r = .2, sigma = .01),
-  list(K = 1000, r = .15, sigma = .5),
-  list(K = 900, r = .3, sigma = .01))
+  list(K = 1500, r = .2, sigma = 1),
+  list(K = 1000, r = .15, sigma = 5),
+  list(K = 900, r = .3, sigma = 10))
 
 data = list(
   n = nrow(Logistic),
@@ -183,7 +184,7 @@ initFunc <- function (){
 return(list(
   K = runif(1, 10, 2000),
   r = runif(1, .1, 1.6),
-  sigma = runif(1, .01, .5)))}
+  sigma = runif(1, 1, 80)))}
 
 initFunc()
 initFunc()
@@ -299,7 +300,7 @@ plot(density(df$K), main = "", xlim=c(800, 2000), xlab = "K")
 # Find the probability that the parameter K exceeds 1600
 1 - ecdf(df$K)(1600)
 # Find the probability that the parameter 1000 < K < 1300 
-ecdf(df$K)(1200) - ecdf(df$K)(800)
+ecdf(df$K)(1300) - ecdf(df$K)(1000)
 ```
 
 <br>

@@ -323,7 +323,7 @@ model{
   # priors
   K ~ dunif(0, 4000)
   r ~ dunif (0, 2)
-  sigma ~ dunif(0, .5) 
+  sigma ~ dunif(0, 100) 
   tau <- 1/sigma^2
   # likelihood
   for(i in 1:n){
@@ -346,9 +346,9 @@ library(rjags)
 Logistic  = Logistic[order(Logistic$PopulationSize),]
 
 inits = list(
-  list(K = 1500, r = .2, sigma = .01),
-  list(K = 1000, r = .15, sigma = .5),
-  list(K = 900, r = .3, sigma = .01))
+  list(K = 1500, r = .2, sigma = 1),
+  list(K = 1000, r = .15, sigma = 5),
+  list(K = 900, r = .3, sigma = 10))
 
 data = list(
   n = nrow(Logistic),
@@ -381,9 +381,9 @@ inits = list(K = 1500, r = .5, tau = 2500) # WRONG
 
 \begin{Verbatim}
 inits = list(
-  list(K = 1500, r = .2, sigma = .01),
-  list(K = 1000, r = .15, sigma = .5),
-  list(K = 900, r = .3, sigma = .01))
+  list(K = 1500, r = .2, sigma = 1),
+  list(K = 1000, r = .15, sigma = 5),
+  list(K = 900, r = .3, sigma = 10))
 \end{Verbatim}
 
 \noindent Now it is really easy to see why we need the \enquote{list of lists\index{list of lists}} format -- there is one list for each chain; but remember, you require the same structure for a single chain, that is, a list of lists.
@@ -430,13 +430,13 @@ Finally, \texttt{n.iter = n.iter} says we want 10,000 iterations in each chain a
 \begin{algorithm}
 \begin{Verbatim}[frame=single]
 { # Extra bracket needed only for R markdown files - see answers
-sink("logisticJAGS.R") # This is the file name for the jags code
+sink("LogisticJAGS.R") # This is the file name for the jags code
 cat("
 model{
   # priors
   K ~ dunif(0, 4000)
   r ~ dunif (0, 2)
-  sigma ~ dunif(0, .5) 
+  sigma ~ dunif(0, 100) 
   tau <- 1 / sigma^2
   # likelihood
   for(i in 1:n){
@@ -475,7 +475,7 @@ initFunc <- function (){
 return(list(
   K = runif(1, 10, 2000),
   r = runif(1, .1, 2),
-  sigma = runif(1, .01, 1))}
+  sigma = runif(1, 1, 80)))}
 \end{Verbatim}
 
 \noindent We will use this function to automatically provide a different set initial values to each chain in our JAGS model.
@@ -515,17 +515,17 @@ initFunc <- function (){
 return(list(
   K = runif(1, 10, 2000),
   r = runif(1, .1, 2),
-  sigma = runif(1, .01, 1)))}
+  sigma = runif(1, 1, 80)))}
 
 # run JAGS model in parallel
 library(parallel)
-set.seed(1)
 detectCores()
 cl <- makeCluster(3) # Here we use three cores
 clusterExport(cl, c("data", "initFunc", "n.adapt", "n.update", "n.iter")) 
 out <- clusterEvalQ(cl, {
   library(rjags)
-  jm = jags.model("LogisticJAGS.R", data = data, inits = initFunc, 
+  set.seed(1)
+  jm = jags.model("LogisticJAGS.R", data = data, inits = initFunc(), 
   n.chains = 1, n.adapt = n.adapt)
   update(jm, n.iter = n.update)
   zmCore = coda.samples(jm, variable.names = c("K", "r", "sigma", "tau"), 

@@ -1,0 +1,267 @@
+
+<style>
+
+/* uncomment out this to generate exercise */
+/* .hider {display: none;}  
+/* .hider2 {display: inline;} 
+
+/* uncomment out this to generate key */
+ .hider {display: inline;}  
+ .hider2 {display: none;}  
+
+</style>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Bayesian Model Selection
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+[Motivation][]
+
+[Problem][]
+
+[Matrix specification of linear models][]
+
+```{r preliminaries, include = FALSE}
+rm(list = ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE)
+
+# uncomment out this to generate key
+ nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+# nokey = TRUE; key = FALSE
+```
+
+<br>
+
+####Motivation
+
+In the first edition of their classic text "Bayesian Data Analysis", Gelman and colleagues wrote an entry in the index: "Model selection: why we don't do it."  The second edition (Gelman et al. 1995) relaxed this a bit by saying "Model selection: why we avoid it."  A reason for this is that Bayesians believe in using prior knowledge in all analyses. One important way that knowledge can enter into a model is by prior information on the mechanistic role of predictor variables.  If we *know* that a predictor has a mechanistic influence on a response, why would we leave it out of a model?
+
+There are occasions where model selection is needed by Bayesians. Widely used methods, AIC and BIC (despite its name!) are not Bayesian but instead are based on maximum likelihood.  In this exercise, you will learn to use Bayesian methods for model selection.  We would use these methods there are no out-of-sample data available for true model validation, the gold standard of model selection, or if computation limitations prevent the use of cross validation, the next best choice when out-of-sample data are not available. 
+
+<br>
+
+####Problem
+You will model bird species richness in the 50 (actually 49) US states in response to a set of predictor variables, area, mean temperature, and mean precipitation.  Fit the following models and calculate DIC, WAIC, and Dsel (posterior predictive loss criterion) for each. In fitting the models, use a prior mean of 0 and variance of 100 for each regression coefficient.
+
+1. Model 1: Null model with only an intercept (no covariates).
+
+2. Model 2: Intercept and area as covariate.
+
+3. Model 3: Intercept and temp as covariate.
+
+4. Model 4: Intercept and precip as covariate.
+
+5. Model 5: Intercept and area and temp as covariates.
+
+See the included file "Model selection math.pdf" for the mathematics standing behind each selection criterion.
+
+<br>
+
+####Matrix specification of linear models
+Specifying linear models in matrix notation is compact and convenient relative to writing out the full model as a scalar equation when there are several predictor variables.  Consider the the typical, deterministic linear model:
+
+$$ \mu_{i}=\beta_{0}+\beta_{1}x_{1i}+\beta_{2}x_{2i}.$$
+
+It can be written in matrix form as 
+
+$$\pmb{\mu}=\mathbf{X}\pmb{\beta},$$
+
+where $\pmb{\beta}$ is a column vector, $(\beta_0, \beta_1, \beta_2)'$ with length = number of model coefficients, and $\mathbf{X}$ is a *design* matrix with the number of rows equal to the number of data points and the number of columns equal to the number of predictor variables + 1 (so, in this example, 3).  Column one contains all 1's (or 0's if you seek to force the intercept through 0).  Column two contains the data values of predictor variable 1,  column 2, predictor variable 2, and so on.  Of course, $\mathbf(y)$ is a vector of model output.  If you are unfamiliar with matrix multiplication, ask one of the lab instructors to explain how this works. 
+
+Statisticians use nothing else in specifying linear models, and the rest of us can benefit form becoming comfortable with matrix notation. It is particularly handy here because we can use a single JAGS file (well, two actually) to specify several different models using the code below. 
+
+
+```{r eval=FALSE}
+ z <- X %*% beta # the regression model in matrix form, returns a vector of length n
+    for(i in 1:n)   { 
+    lambda[i] <- exp(z[i])
+    y[i] ~ dpois(lambda[i])
+}
+```
+
+Note that `%*%` is the symbol for matrix multiplication in JAGS and R. 
+
+The reason this is so handy is an R function, `model.matrix()`, for creating a design matrix, i.e., the $\mathbf(X)$.  Consider the following:
+
+```{r eval=FALSE}
+X = model.matrix(~as.numeric(scale(area)) + as.numeric(scale(temp)), data = bird.sm.df)
+```
+This creates a design matrix with 1's in column one and standardized data for area and temperature in columns two and three using the data in the data frame `bird.sm.df`. So you use matrix multiplication in the JAGS file and specify the model using a design matrix, which allows you to obviate the need for a different file of JAGS code for each model. Slick.
+
+Your job is to write code to fit this model and to  compute DIC, WAIC, and Dsel. This will exercise you skill in summarizing jags objects using the `summary( )` function.  I will give you the answers, but not the code to get them. Note that you will need to used separate code for the intercept only model.  The models with slopes can be fit using the same code with different design matrices.
+
+To check your answers, you should get very close to DIC= 527 WAIC = 533 Dsel = 65651 for model 5.
+
+Some preliminaries:
+```{r}
+####
+####  Load Packages
+####
+library(rjags)
+library(SESYNCBayes)
+####
+####  Load Data 
+####
+
+bird.df <- RichnessBirds
+
+####
+####  Remove Outliers 
+####
+
+idx.outlier=(1:51)[(bird.df$species==min(bird.df$species) | bird.df$area==max(bird.df$area))]
+bird.sm.df=bird.df[-idx.outlier,]
+
+####
+####  Setup Data to Fit Model 
+####A cool way to make a design matrix from a data frame.  Automatically makes the first column = 1 to allow for intercept.
+
+#Use these to run differnt models, ucommenting one at a time.
+#X = model.matrix(~as.numeric(scale(area)), data = bird.sm.df)
+#X = model.matrix(~as.numeric(scale(temp)), data = bird.sm.df)
+#X = model.matrix(~as.numeric(scale(precip)), data = bird.sm.df)
+X = model.matrix(~as.numeric(scale(area)) + as.numeric(scale(temp)), data = bird.sm.df)
+y = bird.sm.df$species  
+M1.list <- list(y=y,X=as.matrix(X),n=length(y),p=dim(X)[2])
+```
+
+
+
+```{r,echo=key, include=key}
+{
+sink("pois.reg_nth")
+cat("
+model{
+  z <- X %*% beta # the regression model in matrix form, returns a vector of length
+  for(i in 1:n)   { 
+    y[i] ~ dpois(lambda[i])
+    lambda[i] <- exp(z[i])
+    #calculate predicitve density for use in WAIC
+    pd[i] <- dpois(y[i],lambda[i]) #note when the lhs of the <- is not data, dpois() returns a probability
+    #calculate the log predicitve density for use in WAIC
+    log_pd[i] <- log(dpois(y[i],lambda[i]))
+    #simulate new data sets for posterior predictive loss
+    y.new[i]~dpois(lambda[i])
+  }
+  
+  
+  # PRIORS
+  # p = number of coefficients, including intercept
+  for(i in 1:p) {  
+    beta[i] ~ dnorm(0, 0.01)
+  }
+}
+",fill=TRUE)
+sink()
+}
+```
+
+```{r, echo=key, include=key}
+####  Fit Model Using JAGS 
+####
+set.seed(7)
+#get DIC module for calculating deviance and DIC directly
+load.module("dic")
+inits=list(beta=c(mean(log(y)),rep(0,dim(X)[2]-1)))
+M1.model <- jags.model("pois.reg_nth",data=M1.list,inits=inits,n.chains=2,n.adapt=1000)
+update(M1.model, n.iter=3000)
+M1.out <- coda.samples(M1.model,variable.names=c("beta","lambda"),n.iter=8000)
+summary(M1.out)
+zj=jags.samples(M1.model,data=M1.list, inits=inits, n.chains=2,variable.names=c("log_pd","pd","beta","lambda", "deviance", "y.new"), n.iter=10000)
+zDIC=dic.samples(M1.model, n.iter=8000)
+
+
+```
+
+
+
+
+```{r, eval=key, include=key, echo=key}
+{
+sink("pois.reg.0_nth.R")
+cat("
+model {
+  
+  # LIKELIHOOD
+  # n= number of states
+  # y = number of birds in each state
+  
+  for(i in 1:n)   { 
+    y[i] ~ dpois(lambda[i])
+    z[i] <- beta
+    lambda[i] <- exp(z[i])
+    #calculate predicitve density for use in WAIC
+    pd[i] <- dpois(y[i],lambda[i]) #note when the lhs of the <- is not data, dpois() returns a probability
+    #calculate the log predicitve density for use in WAIC
+    log_pd[i] <- log(dpois(y[i],lambda[i]))
+    #simulate new data sets for posterior predictive loss
+    y.new[i]~dpois(lambda[i])
+  }
+  
+  
+  # PRIOR
+
+    beta ~ dnorm(0, 0.01)
+
+  
+}
+
+    ",fill=TRUE)
+sink()
+}
+```
+
+```{r, eval=key, include=key, echo=key}
+###
+##Run these inits, M1.model, and mean commands for null model only
+##
+inits=list(beta=c(mean(log(y)))) # uncomment for the null model
+M1 <- M1.list <- list(y=y,X=as.matrix(X),n=length(y),p=dim(X)[2])
+M1.model <- jags.model("pois.reg.0_nth.R",data=M1.list,inits=inits,n.chains=2,n.adapt=1000)
+update(M1.model,n.iter=3000)
+M1.out <- coda.samples(M1.model,variable.names=c("beta","lambda"),n.iter=8000)
+zj=jags.samples(M1.model,data=M1.list, inits=inits, n.chains=2,variable.names=c("log_pd","pd","beta","lambda", "deviance", "y.new"), n.iter=10000)
+zDIC=dic.samples(M1.model, n.iter=8000)
+```
+
+
+```{r eval=key, echo=key, include=key}
+#Model selection statistics.  All checked against Mevin's code
+#DIC
+mean.lambda = summary(zj$lambda,mean)$stat
+Dhat = -2*(sum(dpois(y,mean.lambda,log=TRUE))) 
+Dbar = summary(zj$deviance, mean)$stat
+pD.DIC = Dbar - Dhat
+DIC = Dhat + 2*pD.DIC
+c(pD.DIC,DIC)
+#Now use built in function from dic.samples( )  above
+zDIC
+###
+
+####### WAIC
+
+lppd=-2*sum(log(summary(zj$pd,mean)$stat))
+pD.WAIC=sum((summary(zj$log_pd,sd)$stat)^2)
+WAIC=lppd +2*pD.WAIC
+c(pD.WAIC,WAIC)
+
+
+######Posterior predictive loss
+
+Dsel = sum((y-summary(zj$y.new,mean)$stat)^2) + sum((summary(zj$y.new,sd)$stat)^2)
+Dsel
+```
+

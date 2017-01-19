@@ -1,0 +1,164 @@
+
+```{r echo=FALSE}
+rm(list=ls())
+library(knitr)
+evalSwitch = FALSE
+echoSwitch = FALSE
+```
+
+<div style="width:200px; height=200px">
+![Logo](../Logo.png)
+</div>
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+
+#### Posterior predictive checks
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+### Motivation
+All statistical inference is based on some type of staistical model.  A truly fundamental requirement for reliable inference is that the statistical model is capable of giving rise to the data.  If this requirement is not met, you have *no* basis for inference. Statistical theory will not back you up. You are flying blind, proceeding bravely, perhaps foolishly, on your own. These truths motivate the need for model checking.  Models that fail checks should be discarded at the outset.  (This is *not* model selection.  More about that later.)
+
+The Bayesian approach provides a method, simple to implement, that allows you to check if your model is capable of producing the  data.  It is called a *posterior predictive check*.  The details of the math are given in `Pages from Hobbs and Hooten.pdf` in the posterior predictive check folder.  Here is a biref description of how to code it.  The algorithm goes like this:
+
+1. Simulate a new data set at each iteration of the MCMC.  This sounds formidable, but it is really no more than drawing a random variable from the likelihood.  So, for example if your likelihood is 
+```{r, eval=FALSE}
+y[i] ~ dnorm(mu[i], tau)
+```
+you can simualte a new data set by embedding  
+
+```{r, eval = FALSE}
+y.sim[i] ~ dnorm(mu[i], tau)
+```
+
+
+in the same `for` loop.
+
+2. Calculate a test statistic based on the real and the simulated data.  The test statistic could be a mean, standard deviation, coefficient of variation, discrepancy, minimum, maximum -- really any function that helps you compare the simulated and real data.
+
+3. We are interested in calculating a Bayesian p value, the probability that the test statistic computed from the simulated data is more extreme than the test statistic computed from the real data. There is evidence of lack of fit -- the model cannot give rise to the data -- if the Bayesian p value is large or small.  We want values between, say, .10 and .90, ideally close to .5. To obtain this the Bayesian p we use the JAGS `step(x)` function that returns 0 if x is less 0 and and 1 otherwise.  So, presume our test statistic for was the standard deviation.  Consider the following psedu-code:
+```{r eval=FALSE}
+for(i in 1:length(y)){
+  mu[i] <- prediction from model
+  y[i] ~ dnorm(mu[i], tau)
+  y.sim[i] ~ dnorm(mu[i], tau)
+}
+sd.data<-sd(y[])
+sd.sim <-sd(y.sim[])
+p.sd <- step(sd.sim - sd.data)
+```
+That is all there is to it.  You then include `p.sd` in your jags or coda object.
+
+###Problem
+
+Return to the pooled model you developed in the first problem of mult-level modeling exrecise. Do posterior predictive checks using the mean, standard deviation, minimum, and discepancy as test statistics.  The discrepancy statistic is is $\sum_{i=1}^{n}(y_i-\mu_i)^2$ where $\mu_i$ is the $i^th$ prediction of your model. Overlay the posterior distribution of the simulated data on the historgram of the read data (density on y axis, not frequency). What do you conclude?  Is there any indication of lack of fit?  Enough to discard the model?
+
+```{r eval=evalSwitch, echo=echoSwitch}
+#preliminaries
+library(rjags)
+library(reshape)
+library(ggplot2)
+set.seed(5)
+#setwd("/Users/Tom/Documents/Ecological Modeling Course/_A_Master_Lab_Exercises/Multi-level models NO2/")
+y=read.csv("NO_2 emission all data for exercise.csv")
+y.n.sites = length(unique(y$group))
+qplot(n.input, emission, data=y, color =  group)
+
+
+#data for all models except last one
+data = list(
+  y.emission = log(y$emission),
+  y.n.input = log(y$n.input) - mean(log(y$n.input)) #center the data to speed convergence and aid in interpretation. Can recover 0 intercept if needed.
+
+)
+
+
+
+inits = list(
+  list(
+    alpha = 0,
+    beta = .5,
+    sigma = 50
+  ),
+  list(
+    alpha = 1,
+    beta = 1.5,
+    sigma = 10
+  )
+)
+
+
+```
+
+
+
+```{r,eval=evalSwitch, echo=echoSwitch}
+####Pooled model
+{
+sink("Pooled")
+cat("
+model{
+#priors
+alpha ~ dnorm(0,.0001)
+beta ~ dnorm(0,.0001)
+sigma ~ dunif(0,100)
+tau.reg <- 1/sigma^2
+#likelihood
+ for(i in 1:length(y.emission)){
+    mu[i] <- alpha + beta * y.n.input[i]
+    y.emission[i] ~ dnorm(mu[i], tau.reg)
+    #simulated data for posterior predictive checks
+    y.emission.sim[i] ~ dnorm(mu[i], tau.reg) 
+    sq.error.data[i] <- (y.emission[i]-mu[i])^2
+    sq.error.sim[i] <- (y.emission.sim[i] - mu[i])^2
+ }
+#Bayesian P values
+sd.data <- sd(y.emission)
+sd.sim <- sd(y.emission.sim)
+p.sd <- step(sd.sim-sd.data)
+
+mean.data <- mean(y.emission)
+mean.sim  <- mean(y.emission.sim)
+p.mean <- step(mean.sim - mean.data)
+
+discrep.data <- sum(sq.error.data)
+discrep.sim <- sum(sq.error.sim)
+p.discrep <- step(discrep.sim - discrep.data)
+
+min.data <- min(y.emission)
+min.sim <- min(y.emission.sim)
+p.min <-step(min.sim-min.data)
+}
+    
+",fill=TRUE)
+sink()
+}
+```
+
+
+
+
+```{r, eval=evalSwitch, echo=echoSwitch}
+n.update=10000
+n.iter=10000
+n.update = 3000
+jm.pooled = jags.model("Pooled", data=data, n.adapt = 3000, inits=inits, n.chains=length(inits))
+update(jm.pooled, n.iter = n.update)
+#zc.pooled = coda.samples(jm.pooled, variable.names = c("alpha", "beta", "sigma"), n.iter=n.iter)
+zj.pooled = jags.samples(jm.pooled, variable.names = c("alpha", "beta", "sigma", "p.sd", "p.mean", "p.discrep","p.min", "y.emission.sim"), n.iter=n.iter)
+zj.pooled$p.sd
+zj.pooled$p.mean
+zj.pooled$p.discrep
+zj.pooled$p.min
+
+
+hist(data$y.emission, breaks=20, freq=FALSE, main="Simulated and real data", xlab=expression(paste("log(", N0[2], " emission)")), cex.lab=1.2) #note that this is the log transformed data
+lines(density(zj.pooled$y.emission.sim), col="red")
+legend(-10,.2,"simulated", col="red", lty="solid")
+
+```
+
+
+
+
+
+

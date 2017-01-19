@@ -52,7 +52,7 @@ Modeling presence or absence is a classic problem involving mixture models, spec
 
 A fundamental question in landscape ecology seeks to understand how landscape structure shapes variation in the abundance of species. We will use data from the Swiss Survey of Common Breeding Birds, courtesy of Royle and Dorazio (2008), to model habitat occupancy by a common, resident bird in the Swiss Alps, the willow tit (*Parus montanus*). The data come from annual surveys of one km^2^ quadrats distributed across Switzerland (Fig. 1). Surveys are conducted during the breeding season on three separate days, but some quadrats have missing data so that the number of replicate observations is fewer than three. 
 
-During each survey, an observer records every visual or acoustic detection of a breeding species and marks its location using a global positioning system or, in earlier years, a paper map. Because we are observing a resident species during the breeding season, we assume that the true state (occupied or unoccupied) does not change among sample dates, an assumption known as closure. 
+During each survey, an observer records every visual or acoustic detection of a breeding species (we do not differentiate between these two types of detections in this problem) and marks its location using a global positioning system or, in earlier years, a paper map. Because we are observing a resident species during the breeding season, we assume that the true state (occupied or unoccupied) does not change among sample dates, an assumption known as closure. 
 
 <img src="WillowTit.png" style="float: left; width: 49%; margin-right: 1%; margin-bottom: 0.5em;">
 <img src="MHBMap.jpg" style="float: left; width: 49%; margin-right: 1%; margin-bottom: 0.5em;">
@@ -127,13 +127,13 @@ library(rjags)
 set.seed(1)
 
 elevation <- scale(SwissBirds$elevation)
-muElevation <- attr(elevation, "scaled:center")
-sdElevation <- attr(elevation, "scaled:scale")
+muElevation <- mean(SwissBirds$elevation)
+sdElevation <- sd(SwissBirds$elevation)
 elevationPredict = (seq(500, 2500, 10) - muElevation)/sdElevation
 
 forestCover <- scale(SwissBirds$forestCover)
-muforestCover <- attr(forestCover, "scaled:center")
-sdforestCover <- attr(forestCover, "scaled:scale")
+muforestCover <- mean(SwissBirds$forestCover)
+sdforestCover <- sd(SwissBirds$forestCover)
 
 inits = list(
   list(z = rep(1, nrow(SwissBirds)), p = runif(1, 0, 1), beta = runif(4, -2, 2)),
@@ -182,8 +182,8 @@ lines(seq(500, 2500, 10), psi[3,], type = "l", lty = "dashed", lwd = 2)
 abline( v = mean(zj$elevationMax), lwd = 2)
 text(1300, .9, "Optimum elevation", cex = .8)
 
-hist(zj$elevationMax, breaks = 100, main = "", xlab = "Elevation (m)", xlim = c(1500, 2500), 
-  freq = FALSE, col = "gray")
+hist(zj$elevationMax, breaks = 500, main = "", xlab = "Elevation (m)", xlim = c(1500, 2500), 
+  freq = FALSE, col = "azure1")
 abline(v = summary(zj$elevationMax, quantile, c(.975))$stat, lty = "dashed", lwd = 2)
 abline(v = summary(zj$elevationMax, quantile, c(.025))$stat, lty = "dashed", lwd = 2)
 ```
