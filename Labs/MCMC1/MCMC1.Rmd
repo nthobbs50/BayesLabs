@@ -16,7 +16,8 @@ output: html_document
 
 <img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
 
-### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+# `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+### `r fileName="../Subtitle.txt";readChar(fileName,file.info(fileName)$size)`
 #### Markov chain Monte Carlo
 #### `r format(Sys.Date(), format="%B %d, %Y")`
 
@@ -44,7 +45,7 @@ knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = TRUE)
  nokey = FALSE; key = TRUE
 
 # uncomment out this to generate exercise
-# nokey = TRUE; key = FALSE
+#nokey = TRUE; key = FALSE
 ```
 
 <br>
@@ -160,13 +161,22 @@ lines(samplesKept, pmean[2, samplesKept], typ = "l", col = "red")
 lines(samplesKept, pmean[3, samplesKept], typ = "l", col = "green")
 ```
 
-2. For all chains combined, make a histogram of the samples retained after burn-in. Put a vertical line on the plot showing the generating value. 
+2. For all chains combined, make a histogram of the samples retained after burn-in. Put a vertical line on the plot showing the generating value for the mean and the mean of the data. 
 
 ```{r, fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
 hist(pmean[, samplesKept], breaks = 100, freq = FALSE, main = expression(theta), xlim = c(95, 105), xlab = "Value of MCMC samples", col = "gray")
 lines(density(pmean[, samplesKept]), col = "red", lwd = 3)
-abline(v = theta, lty = "dashed", col = "blue", lwd = 4)
+abline(v=mean(y),lty = "dashed", col = "red", lwd = 2)
+abline(v = theta, lty = "dashed", col = "blue", lwd = 2)
+text=c("sample mean", "generating mean")
+col=c("red", "blue")
+lty=c("dashed", "dashed")
+legend(95,.6, text, col=col, lty=lty, lwd=2)
+
 ```
+
+
+
 
 3. Repeat steps 1-2 for the variance.
 
@@ -175,9 +185,14 @@ plot(samplesKept, pvar[1, samplesKept], typ = "l", ylab = expression(varsigma^2)
 lines(samplesKept, pvar[2, samplesKept], typ = "l", col = "red")
 lines(samplesKept, pvar[3, samplesKept], typ = "l", col = "green")
 
-hist(pvar[, samplesKept], breaks = 100, freq = FALSE, main = expression(varsigma^2), xlab = "Value of MCMC samples", col = "gray")
+hist(pvar[, samplesKept], breaks = 100, freq = FALSE, main = expression(varsigma^2), xlab = "Value of MCMC samples", col = "gray", xlim=c(15,35))
 lines(density(pvar[, samplesKept]), col = "red", lwd = 3)
-abline(v = varsigma.sq, lty = "dashed", col = "blue", lwd = 4)
+abline(v = varsigma.sq, lty = "dashed", col = "blue", lwd = 2)
+abline(v = var(y), lty = "dashed", col = "red", lwd = 2)
+text=c("sample variance", "generating variance")
+col=c("red", "blue")
+lty=c("dashed", "dashed")
+legend(26,.12, text, col=col, lty=lty, lwd=2)
 ```
 
 4. For both $\theta$ and $\varsigma^{2}$, calculate the mean of all the chains combined and its standard deviation. Interpret these quantities. 

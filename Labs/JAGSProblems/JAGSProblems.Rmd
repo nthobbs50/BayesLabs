@@ -1,10 +1,10 @@
 <style>
 
 /* uncomment out this to generate exercise */
-/* .hider {display: none;} */
+ .hider {display: none;} 
 
 /* uncomment out this to generate key */
-.hider {display: inline;} 
+/*.hider {display: inline;} */
 
 </style>
 
