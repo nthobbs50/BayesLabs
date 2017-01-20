@@ -1,10 +1,10 @@
 <style>
 
 /* uncomment out this to generate exercise */
- .hider {display: none;} 
+/* .hider {display: none;} */
 
 /* uncomment out this to generate key */
-/* .hider {display: inline;} */
+.hider {display: inline;} 
 
 </style>
 
@@ -49,10 +49,10 @@ library(knitr)
 knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE)
 
 # uncomment out this to generate key
-# nokey = FALSE; key = TRUE
+nokey = FALSE; key = TRUE
 
 # uncomment out this to generate exercise
- nokey = TRUE; key = FALSE
+ #nokey = TRUE; key = FALSE
 
 set.seed(1)
 ```
