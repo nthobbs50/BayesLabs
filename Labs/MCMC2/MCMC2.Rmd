@@ -75,10 +75,10 @@ library(knitr)
 knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE)
 
 # uncomment out this to generate key
-# nokey = FALSE; key = TRUE
+nokey = FALSE; key = TRUE
 
 # uncomment out this to generate exercise
- nokey = TRUE; key = FALSE
+ #nokey = TRUE; key = FALSE
 
 set.seed(3)
 ```
@@ -504,7 +504,7 @@ A good way to work when writing such algorithms is to treat parameters as known-
 
 ```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = TRUE, include = TRUE, message = FALSE}
 data = getData(alpha = 38.5, gamma = 1.7, sigma = 2, c = 8)
-n.iter = 50000
+n.iter = 150000
 x = setup(n.iter = n.iter, n.chain = 1, parameter.names = c("alpha", "c", "gamma", "sigma",
   "y.hat", "growth_ratio"), dim.x = c(1, 1, 1, 1, 50, 1))
 tune = x$tune
@@ -540,7 +540,7 @@ Here is the code for all parameters.
 </div>
 
 ```{r results = 'hide', echo = key, include = key, message = FALSE}
-n.iter = 50000
+n.iter = 150000
 
 x = setup(n.iter = n.iter, n.chain = 1, parameter.names = c("alpha", "c", "gamma", "sigma",
   "y.hat", "growth.ratio"), dim.x = c(1, 1, 1, 1, 50, 1))
