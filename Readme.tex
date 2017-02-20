@@ -1,0 +1,182 @@
+\batchmode
+\makeatletter
+\def\input@path{{\string"/Users/Tom/Documents/NSF Statistics Workshop/BayesLabs/\string"}}
+\makeatother
+\documentclass[11pt,american]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage[letterpaper]{geometry}
+\geometry{verbose,tmargin=1in,bmargin=1in,lmargin=1in,rmargin=1in,footskip=1cm}
+\usepackage{array}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{setspace}
+\usepackage[authoryear]{natbib}
+\doublespacing
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\makeatother
+\usepackage{graphicx}
+\usepackage{lineno,setspace}
+%\linenumbers
+\usepackage[small,compact]{titlesec}
+\usepackage[small,it]{caption}
+%\addtolength{\textfloatsep}{-20mm}
+%\doublespace
+\addtolength{\belowcaptionskip}{-3mm}
+\addtolength{\abovecaptionskip}{-3mm}
+\usepackage{enumitem} % load the package
+\usepackage{bm}
+\usepackage{calc}
+\usepackage{rotating}
+
+\DeclareMathOperator{\dbin}{binomial}
+\DeclareMathOperator{\dpois}{Poisson}
+\DeclareMathOperator{\dnorm}{normal}
+\DeclareMathOperator{\dlnorm}{lognormal}
+\DeclareMathOperator{\dgamma}{gamma}
+\DeclareMathOperator{\dunif}{uniform}
+\DeclareMathOperator{\dmultinom}{multinomial}
+\DeclareMathOperator{\dbeta}{beta}
+\DeclareMathOperator{\ddirch}{Dirichlet}
+\DeclareMathOperator{\dbern}{Bernoulli}
+
+
+
+\addtolength{\intextsep}{-3mm}
+
+
+\usepackage{url}
+%\usepackage[tablesfirst,notablist]{endfloat}
+\usepackage{fancyheadings}
+\pagestyle{fancy}
+\input{"/Labs/middle_header.txt"}
+\chead {BayesLabs}
+
+\makeatother
+
+\usepackage{babel}
+\usepackage{Sweave}
+\begin{document}
+
+\section*{Instructions for Using BayesLabs}
+
+This repository contains a series of laboratory exercises designed
+to support an introductory course in Bayesian modeling for graduate
+students, post-docs, faculty, and research scientists. The material
+can be adapted for use in a 10-day intensive workshop format or a
+more traditional semester-long course. Examples are drawn from social
+science and ecology. The materials were developed by N. Thompson Hobbs,
+Mevin B. Hooten, Christian Che-Castaldo, Mary Collins, Kiona Ogle,
+and Maria Uriarte with support from the National Science Foundation
+(awards DBI 1052875 and DEB1145200). The labs were designed to compliment
+reading and lectures based on Hobbs, N. T., and M. B. Hooten. 2015.
+Bayesian models: a statistical primer for ecologists. Princeton University
+Press, Princeton, N.J. (Table 1).
+
+Each folder in the repository contains an R markdown file with switches
+that toggle output of .html files for exercises alone and exercises
+with answers. Using these switches is explained in the R markdown
+files. The files \texttt{/Labs/title.txt }and \texttt{/Labs/subtitle.txt
+}specify the course name on all materials, allowing users to change
+the title to match the name of the course they are teaching. We ask
+that the logo acknowledging NSF support remain unchanged by users. 
+
+The \texttt{/Admin }folder contains instructions for pulling the repository
+and for creating an R package containing the data library required
+for the exercises.
+
+\begin{table}[H]
+\caption{Laboratory exercises supporting an introductory course in Bayesian
+modeling. Readings are chapters from Hobbs and Hooten 2015. Exercises
+are arranged with introductory topics at the top of the table and
+more advanced topics toward the bottom.}
+
+\begin{tabular}{|>{\raggedright}p{1.9in}|>{\raggedright}p{3.5in}|>{\centering}p{1in}|}
+\hline 
+Folder in \texttt{/Labs} &
+Topics and challenges &
+Reading\tabularnewline
+\hline 
+\hline 
+\texttt{Probability} &
+Rules of probability. Factoring joint distributions. Probability distributions.
+Marginal distributions. Moment matching. &
+Chapter 3\tabularnewline
+\hline 
+\texttt{HemlockLightExample} &
+Likelihood functions. Computing total likelihoods from multiple observations.
+Using prior information in the likelihood framework. &
+Chapter 4\tabularnewline
+\hline 
+\texttt{ConjugatePriors} &
+Find parameters of posterior distributions using conjugacy between
+likelihoods and priors.  &
+Chapter 5.3\tabularnewline
+\hline 
+\texttt{BayesTheorem} &
+Compute the likelihood, prior, and marginal distribution of the data
+and assemble them to compute the posterior distribution. &
+Chapter 5.1, 5.2\tabularnewline
+\hline 
+\texttt{MCMC1} &
+Introduction to Markov chain Monte Carlo using Gibbs sampling for
+normal mean and variance. &
+Chapter 7\tabularnewline
+\hline 
+\texttt{MCMC2} &
+Accept-reject sampling using Metropolis-Hastings algorithm. &
+Chapter 7\tabularnewline
+\hline 
+\texttt{JAGSPrimer} &
+A tutorial on JAGS and rjags for implementing Markov chain Monte Carlo. &
+none\tabularnewline
+\hline 
+\texttt{JAGSProblem} &
+Using JAGS and rjags. &
+none\tabularnewline
+\hline 
+\texttt{ModelBuilding} &
+Word problems to teach drawing directed acyclic graphs and using them
+to write posterior and joint distributions. &
+Chapters 6, 10, 11, 12\tabularnewline
+\hline 
+\texttt{MultiLevelModels} &
+Model building and computation for group-level intercepts and slopes. &
+Chapter 6.2.2\tabularnewline
+\hline 
+\texttt{PosteriorPredictiveChecks} &
+Using data simulation to test for lack of fit. Computing Bayesian
+p values. &
+Chapter 8.1\tabularnewline
+\hline 
+\texttt{SwissBirds} &
+Occupancy models. Zero inflation. Derived quantities. &
+Chapter 6.2.3\tabularnewline
+\hline 
+\texttt{ModelSelection} &
+Evaluating evidence for alternative models using the DIC, WAIC, and
+posterior-predictive loss. &
+Chapter 9\tabularnewline
+\hline 
+\texttt{DynamicModels} &
+State space models. Predictive process distributions. Forecasting. &
+Chapter 8.4, 8.5\tabularnewline
+\hline 
+\texttt{MetaAnalysis} &
+Combining information from multiple studies in priors and likelihoods. &
+Chapter 4\tabularnewline
+\hline 
+\end{tabular}
+\end{table}
+
+\end{document}
