@@ -1,0 +1,431 @@
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### JAGS Primer Answers
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+[Motivation for using KnitR][]
+
+[Exercise 1: Writing a DAG][]
+
+[Exercise 2: Can you improve these priors?][]
+
+[Exercise 3: Using ``for loops``][]
+
+[Exercise 4: Coding the logistic regression][]
+
+[Exercise 5: Coding the logistic regression to run in parallel (optional)][]
+
+[Exercise 6: Summarizing coda objects][]
+
+[Exercise 7: Understanding coda objects][]
+
+[Exercise 8: Convert the ``zm`` object to a data frame][]
+
+[Exercise 9: Vectors in coda objects][]
+
+[Exercise 10: Making plots with JAGS objects][]
+
+[Exercise 11: Summarizing the JAGS object][]
+
+[Exercise 12: Assessing convergence][]
+
+```{r preliminaries, include = FALSE}
+rm(list = ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE, messages = TRUE)
+set.seed(1)
+```
+
+<br>
+
+#### Motivation for using KnitR
+
+You can complete all the coding exercises in the JAGS Primer using simple R scripts. However, you might be wondering about how we created the JAGS Primer key you are looking at right now. We did this using [Yihui Xie's](http://yihui.name/knitr/) ``knitr`` package in R. This can be a highly useful tools for organizing your Bayesian analyses. Within the same document, you can:
+
+* Describe the model and specify the joint distribution using $\LaTeX$ and RMarkdown.
+* Write the R and JAGS code for implementing your model in JAGS.
+* Run the model directly in JAGS.
+* Summarize the convergence diagnostics and present results.
+* Add anything else pertinent to your analysis.
+
+Best of all, ``knitr`` can produce beautiful html files as output, which can be easily shared with collaborators.   We encourage you to become familiar with ``knitr``. We reccomend Karl Broman's [knitr in a nutshell](http://kbroman.org/knitr_knutshell/) as an excellent introductory tutorial. You can also open ``JagsPrimerAnswers.Rmd `` to see how this html document is generated.
+
+<br>
+
+#### Exercise 1: Writing a DAG
+
+Why does $x$ fail to appear in the posterior distribution? Draw the Bayesian network for this model. 
+
+**Answer:** There is no $x$ because we are assuming it is measured without error.
+
+<div style="width:200px; height=200px; margin:0 auto;">
+![](LogisticModelDAG.png)
+</div>
+<div style="width:300px; margin:0 auto;">
+<figcaption><center>Fig 1. Bayesian network for logistic model.</center></figcaption>
+</div>
+
+<br>
+
+#### Exercise 2: Can you improve these priors?
+
+A recurring theme in this course will be to use priors that are informative whenever possible. The gamma priors in equation 3 include *the entire number line $>0$.* Don't we know more about population biology than that? Lets, say for now that we are modeling the population dynamics of a large mammal. How might you go about making the priors on population parameters more informative?
+
+**Answer:** A great source for priors in biology are allometric scaling relationships that predict all kinds of biological quantities based on the mass organisms (Peters, 1983; Pennycuick,1992). If you know the approximate mass of the animal, you can compute broad but nonetheless informative priors on $r$ and $K$. This might leave out the social scientists, but I would trust the scaling of $r$ for people if not $K$. 
+
+In the absence of some sort of scholarly way to find priors, we can at least constrain them somewhat. There is no way that a large mammal can have an intrinsic rate of increase exceeding 1 -- many values for $r$ within gamma(.001, .001) are far large than than that and hence are complete nonsense. We know $r$ must be positive and we can put a plausible bound on its upper limit. The only requirement for a vague prior is that its "$\ldots$ range of uncertainty should be clearly wider that the range of reasonable values of the parameter$\ldots$" (Gelman and Hill, 2009, page 355), so we could use $r$ ~ uniform(0, 2) and be sure that it would be minimally informative. Similarly, we could use experience and knowledge to put some reasonable bounds on $K$ and even $\sigma$, which we can use to calculate $\tau$ as $\tau=\frac{1}{\sigma^{2}}$. 
+
+Peters. *The ecological implications of body size*. Cambridge University Press, Cambridge, United Kingdom, 1983.
+
+C. J. Pennycuick. *Newton rules biology*. Oxford University Press, Oxford United Kingdom, 1992.
+
+A. Gelman and J. Hill. *Data analysis using regression and multilievel / hierarchical modeling*. Cambridge University Press, Cambridge, United Kingdom, 2009.
+
+<br>
+
+#### Exercise 3: Using ``for loops``
+
+Write a code fragment to set vague normal priors for 5 regression coefficients -- ``dnorm(0, 10E-6)`` -- stored in the vector **b**.
+
+```{r echo = TRUE, include = TRUE}
+for(i in 1:5){
+  b[i] ~ dnorm(0, .000001)
+}
+```
+
+<br>
+
+#### Exercise 4: Coding the logistic regression
+
+Write R code (algorithm 3) to run the JAGS model (algorithm 2) and estimate the parameters, $r$, $K$ $\sigma$, and $\tau$. We suggest you insert the JAGS model into this R script using the ``sink`` command as shown in algorithm 4. You will find this a very convenient way to keep all your code in the same R script. 
+
+Here is the joint distribution for our logisitic model again, with the priors updated from exercise 2 and $\tau$ expressed as a derived quantity,
+
+\begin{eqnarray}
+\mu_{i} & = & r-\frac{rx_{i}}{K}\textrm{,}\nonumber\\[1em] 
+\tau & = & \frac{1}{\sigma^{2}}\textrm{,}\nonumber\\[1em]  
+\left[r,K,\sigma\mid\mathbf{y}\right] & \propto & \prod_{i=1}^{n}\textrm{normal}\left(y_{i} \mid \mu_{i},\tau\right)\textrm{uniform}\left(K\mid 0,4000\right) \textrm{uniform}\left(\sigma\mid 0, 2\right) \textrm{uniform}\left(r\mid 0,2\right)\textrm{.}\nonumber\\
+\end{eqnarray}
+
+We use the ``sink`` command to create a JAGS script from our joint distribution. This file is created within R and saved in the working directory. Please note that the outer set of brackets are only required when running this code within an R markdown document (as we did to make this answer key). If you are running them in a plain R script, they are not needed.
+
+It might be useful for you to know that the data were generated from a model with $r=.2$, $K=1200$ and $\sigma = .03$
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+{ # Extra bracket needed only for R markdown files
+sink("LogisticJAGS.R")
+cat(" 
+model{
+  # priors
+  K ~ dunif(0, 4000)
+  r ~ dunif (0, 2)
+  sigma ~ dunif(0, 2) 
+  tau <- 1/sigma^2
+  
+  # likelihood
+  for(i in 1:n){
+    mu[i] <- r - r/K * x[i]
+    y[i] ~ dnorm(mu[i], tau)
+  }
+} 
+",fill = TRUE)
+sink()
+} # Extra bracket needed only for R markdown files
+
+```
+
+Then we run the remaining commands discussed in the JAGS Primer. Note that ``jm`` is calling the JAGS script ``LogisticJAGS.R`` we just created.
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+rm(list = ls())
+
+library(ESS575)
+library(rjags)
+set.seed(1)
+
+Logistic <- Logistic[order(Logistic$PopulationSize),]
+
+inits = list(
+  list(K = 1500, r = .2, sigma = 1),
+  list(K = 1000, r = .15, sigma = .1),
+  list(K = 900, r = .3, sigma = .01))
+
+data = list(
+  n = nrow(Logistic),
+  x = as.double(Logistic$PopulationSize),
+  y = as.double(Logistic$GrowthRate))
+
+n.adapt = 5000
+n.update = 10000
+n.iter = 10000
+
+jm = jags.model("LogisticJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm, n.iter = n.update)
+zm = coda.samples(jm, variable.names = c("K", "r", "sigma", "tau"), n.iter = n.iter, n.thin = 1)
+summary(zm)
+```
+
+<br>
+
+#### Exercise 5: Coding the logistic regression to run in parallel (optional)
+
+Append R code (algorithm 5) to the script you made in exercise 4 to run the JAGS model (algorithm 2) in parallel and estimate the parameters, $r$, $K$ $\sigma$, and $\tau$. Use the ``proc.time`` function in R to compare the time required for the sequential and parallel JAGS run. If your computer has 3 cores, try running only 2 chains in parallel when doing this exercise. If you have fewer than 3 cores, work with a classmate that has at least 3 cores.
+
+We create a function called ``initFunc`` to randomly draw values from a portion of each parameter's support. We will use this function to provide initial values for each chain. We test out ``initFunc`` by running it a couple of times.
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+initFunc <- function (){
+return(list(
+  K = runif(1, 10, 4000),
+  r = runif(1, .01, 2),
+  sigma = runif(1, 0, 2)))}
+
+initFunc()
+initFunc()
+```
+
+Now we run the model in parallel using the code from algorithm 5. We use the ``proc.time`` function to see how long JAGS takes to run the Logistics model in parallel.
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+# run JAGS model in parallel
+library(parallel)
+detectCores()
+
+cl <- makeCluster(3) # Here we use three cores
+clusterExport(cl, c("data", "initFunc", "n.adapt", "n.update", "n.iter")) 
+
+ptm <- proc.time()
+out <- clusterEvalQ(cl, {
+  library(rjags)
+  set.seed(1)
+  jm = jags.model("LogisticJAGS.R", data = data, inits = initFunc(), 
+  n.chains = 1, n.adapt = n.adapt)
+  update(jm, n.iter = n.update)
+  zmCore = coda.samples(jm, variable.names = c("K", "r", "sigma", "tau"), 
+  n.iter = n.iter, thin = 1)
+  return(as.mcmc(zmCore))
+})
+ParallelTime <- proc.time() - ptm
+ParallelTime
+
+stopCluster(cl)
+zmP <- mcmc.list(out)
+```
+
+We rerun the model sequentially and use ``proc.time`` again for comparison.
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+ptm <- proc.time()
+jm = jags.model("LogisticJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm, n.iter = n.update)
+zm = coda.samples(jm, variable.names = c("K", "r", "sigma", "tau"), n.iter = n.iter, n.thin = 1)
+SequentialTime <- proc.time() - ptm
+SequentialTime
+```
+
+Looks like the parallel model runs `r round(SequentialTime[3]/ParallelTime[3],2)` times faster. This factor should increase the more iterations you run (why?) to a limit of 3.
+
+<br>
+
+#### Exercise 6: Summarizing coda objects
+
+Build a table that contains the mean, standard deviation, median and upper and lower 2.5% CI for the parameters from the logistic model. Output your table with 3 significant digits to ``.csv`` file readable by Excel (Hint: see the ``signif()`` function).
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+a <- signif(as.data.frame(summary(zm)$stat[, 1:2]), digits = 3)
+b <- signif(as.data.frame(summary(zm)$quantile[, c(1, 3, 5)]), digits = 3)
+LogisticParameters <- cbind(rownames(a), a, b)
+rownames(LogisticParameters) <- c()
+names(LogisticParameters) <- c("parameter", "mean", "standardDeviation", "lower95", "median", "upper95")
+LogisticParameters
+write.csv(LogisticParameters, file = "LogisticParameters.csv")
+```
+
+<br>
+
+#### Exercise 7: Understanding coda objects
+
+Modify your code to produce a coda object with 3 chains called ``zm.short``, setting ``n.adapt = 500``, ``n.update = 500``, and ``n.iter = 20``.
+
+1. Output the estimate of $\sigma$ for the third iteration from the second chain.
+2. Output all of the estimates of $r$ from the first chain.
+3. Verify your answers by printing the entire chain, i.e. enter ``zm.short`` at the console.
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+n.adapt = 500
+n.update = 500
+n.iter = 20
+
+jm.short = jags.model("LogisticJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm.short, n.iter = n.update)
+zm.short = coda.samples(jm.short, variable.names = c("K", "r", "sigma", "tau"), n.iter = n.iter, n.thin = 1)
+```
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+zm.short[[2]][3,3] # third iteration from second chain for sigma 
+zm.short[[1]][,2] # all estimates of r from first chain
+```
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+zm.short
+```
+
+<br>
+
+##### Exercise 8: Convert the ``zm`` object to a data frame
+
+Using the elements of data frame (not ``zm``) as input to functions:
+
+1. Find the maximum value of $\sigma$.
+2. Estimate the mean of $r$ for the first 1000 and last 1000 iterations in the chain.
+3. Produce a publication quality plot of the posterior density of $K$. 
+4. Estimate the probability that the parameter $K$ exceeds 1600 and the probability that $K$ falls between 1000 and 1300. (Hint: look into using the ``ecdf`` function.) 
+
+``` {r, fig.width = 5, fig.height = 5, fig.align = 'center', fig.cap = "Fig. 2. Posterior density of K.", eval = TRUE, include = TRUE, echo = TRUE}
+df = as.data.frame(rbind(zm[[1]], zm[[2]], zm[[3]]))
+# Find the maximum value of sigma
+max(df$sigma)
+# Find the mean of r for the first 1000 iterations
+mean(df$r[1: 1000])
+# Find the mean of r for the first 1000 iterations
+nr = length(df$r)
+mean(df$r[(nr - 1000): nr]) 
+plot(density(df$K), main = "", xlim=c(800, 2000), xlab = "K") 
+# Find the probability that the parameter K exceeds 1600
+1 - ecdf(df$K)(1600)
+# Find the probability that the parameter 1000 < K < 1300 
+ecdf(df$K)(1300) - ecdf(df$K)(1000)
+```
+
+<br>
+
+##### Exercise 9: Vectors in coda objects
+
+Modify your code to include estimates of $\mu$ and summarize the coda object ``zm``. What if you wanted to plot the model predictions with 95% credible intervals against the data. How would you do that? 
+
+**Answer:** There are several ways this can be done, but the general idea is that you need to extract the rows of the coda object that contain the quantiles for $\mu$, which can be tedious and error prone. For example, if you use rows in the summary table and add or subtract parameters to be estimated, then your row counts will be off. There are ways to use rownames, but a far better way to plot vectors is described in the section on JAGS objects.
+
+``` {r, eval = TRUE, include = TRUE, echo = TRUE}
+n.adapt = 5000
+n.update = 10000
+n.iter = 10000
+jm = jags.model("LogisticJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+update(jm, n.iter = n.update)
+zm = coda.samples(jm, variable.names = c("K", "r", "sigma", "mu"), n.iter = n.iter, n.thin = 1)
+zj = jags.samples(jm, variable.names = c("K", "r", "sigma", "mu"), n.iter = n.iter, n.thin = 1)
+```
+
+``` {r, fig.width = 5, fig.height = 5, fig.align = 'center', fig.cap = "Fig. 3. Median and 95% credible intervals for predicted growth rate.", eval = TRUE, include = TRUE, echo = TRUE}
+mu <- as.data.frame(summary(zm)$quantile[2:51, c(1, 3, 5)]) # <- this is an easy place to make a mistake
+names(mu) <- c("lower95", "median", "upper95")
+Logistic2 <- cbind(mu, Logistic)
+plot(Logistic2$PopulationSize, Logistic2$GrowthRate, xlab = "N", ylab = "Per capita growth rate")
+lines(Logistic2$PopulationSize, Logistic2$median)
+lines(Logistic2$PopulationSize, Logistic2$lower95, lty = "dashed")
+lines(Logistic2$PopulationSize, Logistic2$upper95, lty = "dashed")
+```
+
+<br>
+
+##### Exercise 10: Making plots with JAGS objects
+
+For the logistic model:
+
+1. Plot the observations of growth rate as a function of observed population size.
+2. Overlay the median of the model predictions as a solid line.
+3. Overlay the 95% credible intervals as dashed lines.
+4. Prepare a separate plot of the posterior density of $K$.
+
+For convenience, we created the JAGS object ``zj`` in exercise 9. Here we use it to make plots.
+
+``` {r, fig.width = 10, fig.height = 5, fig.align = 'center', fig.cap = "Fig. 4. Median and 95% credible intervals for predicted growth rate and posterior density of K.", eval = TRUE, include = TRUE, echo = TRUE}
+mu <- summary(zj$mu, quantile, c(.025, .5, .975))$stat # <- notice this is harder to mess up!
+par(mfrow = c(1, 2))
+plot(Logistic$PopulationSize, Logistic$GrowthRate, xlab = "N", ylab = "Per capita growth rate")
+lines(Logistic$PopulationSize, mu[2,])
+lines(Logistic$PopulationSize, mu[1,], lty = "dashed")
+lines(Logistic$PopulationSize, mu[3,], lty = "dashed")
+plot(density(zj$K), main = "", xlim=c(800, 2000), xlab = "K") 
+```
+
+<br>
+
+#### Exercise 11: Summarizing the JAGS object
+
+1. Calculate the median of the second chain for $K$.
+2. Calculate the upper and lower 95% quantiles for the 16th estimate of $\mu$ without using the ``summary`` function.
+3. Calculate the probability that the 16th estimate of $\mu < 0$.
+
+``` {r, fig.width = 5, fig.height = 5, fig.align = 'center', fig.cap = "Fig. 3. Median and 95% credible intervals for predicted growth rate", eval = TRUE, include = TRUE, echo = TRUE}
+summary(zj$K, median)$stat
+quantile(zj$mu[16,,], c(.025, .975))
+ecdf(zj$mu[16,,])(0)
+```
+
+<br>
+
+#### Exercise 12: Assessing convergence
+
+Rerun the logistic model with ``n.adapt = 100``. Then do the following:
+
+1. Keep the next 100 iterations. Assess convergence visually with ``traceplot`` and with the Gelman-Rubin, Heidelberger and Welch, and Raftery diagnostics.
+2. Update another 500 iterations and then keep 500 more iterations. Repeat your assessment of convergence. 
+3. Repeat steps 1 and 2 until you feel you have reached convergence.
+4. Change the adapt phase to zero and repeat steps 1 -- 4. What happens?
+
+``` {r, fig.width = 8, fig.height = 8, fig.align = 'center'}
+set.seed(1)
+n.adapt = 100
+jm.short = jags.model("LogisticJAGS.R", data = data, inits = inits, n.chains = length(inits), n.adapt = n.adapt)
+
+n.iter = 100
+zm.short = coda.samples(jm.short, variable.names = c("K", "r", "sigma", "tau"), n.iter = n.iter, n.thin = 1)
+plot(zm.short)
+gelman.diag(zm.short)
+heidel.diag(zm.short)
+raftery.diag(zm.short)
+
+n.update = 500
+update(jm.short, n.iter = n.update)
+n.iter = 500
+zm.short = coda.samples(jm.short, variable.names = c("K", "r", "sigma", "tau"), n.iter = n.iter, n.thin = 1)
+plot(zm.short)
+gelman.diag(zm.short)
+heidel.diag(zm.short)
+raftery.diag(zm.short)
+
+n.update = 500
+update(jm.short, n.iter = n.update)
+n.iter = 500
+zm.short = coda.samples(jm.short, variable.names = c("K", "r", "sigma", "tau"), n.iter = n.iter, n.thin = 1)
+plot(zm.short)
+gelman.diag(zm.short)
+heidel.diag(zm.short)
+raftery.diag(zm.short)
+
+#Final run--you know this has converged!
+n.update = 5000
+update(jm.short, n.iter = n.update)
+n.iter = 10000
+zm.short = coda.samples(jm.short, variable.names = c("K", "r", "sigma", "tau"), n.iter = n.iter, n.thin = 1)
+plot(zm.short)
+gelman.diag(zm.short)
+heidel.diag(zm.short)
+raftery.diag(zm.short)
+```
+
+
+
+```{r echo = FALSE}
+unlink("LogisticParameters.csv", recursive = FALSE, force = FALSE)
+unlink("LogisticJAGS.R", recursive = FALSE, force = FALSE)
+```

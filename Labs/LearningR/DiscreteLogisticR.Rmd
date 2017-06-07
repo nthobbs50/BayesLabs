@@ -1,0 +1,279 @@
+<style>
+
+/* uncomment out this to generate exercise */
+#.hider {display: none;} 
+
+/* uncomment out this to generate key */
+ .hider {display: inline;} 
+
+</style>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { 
+      equationNumbers: {
+ 
+            autoNumber: "all",
+            formatNumber: function (n) {return +n}
+      } 
+  }
+});
+</script>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Programming in R
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+```{r preliminaries, include = FALSE}
+rm(list = ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE)
+
+# uncomment out this to generate key
+nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+ #nokey = TRUE; key = FALSE
+
+set.seed(1)
+```
+
+<br>
+
+### Ojective
+The purpose of this lab is to test what you have learned about some important topics in R programming:
+
+1. writing functions
+2. creating data structures
+3. looping
+4. sub-setting matrices
+5. plotting
+
+
+### Exploring chaos with the discrete logistic
+
+In 1976, Robert May authored a classic paper (May 1976) revealing chaotic dynamics in discrete time models.  He exercised the discrete logistic,	
+$$x_{t+1}=\lambda x_t(1-x_t)$$
+where $\lambda$ is the per capita rate of population growth and $x_t$ is the population size at time $t$.  This form of the logistic equation may be unfamiliar to you because it lacks the parameter, $K$.   May used a mathematical trick to rescale the equation to eliminate $K$, allowing us to focus our attention on the effect of $\lambda$ on the population’s dynamics.  In  your first exercise, you will vary $\lambda$  and observe its influence on the trajectory of a simulated population.
+<br>
+
+1. Write an R function for equation 1.  Use your function to simulate how population size changes over time in response to variation in the parameter $\lambda$. Set up a model experiment with an outer `for` loop controlling the value of $\lambda$ to range from .25 to 4.0 in steps of .25.  Create an inner loop varying time from 2 to 30 in steps of 1. Assume that the initial condition (i.e., the value of x at time = 1) for the population size is .01. Create a plot of $x$ as a function of time for each value of $\lambda$.   You should display your  plots with 4 x 4 panels, one panel for each of your simulations. Give each plot a title showing the value of $\lambda$.  (Hint, convert the numeric value of $\lambda$ to a character value using `z = as.character(lambda)` and use `main = z` as an option in the plot statement). What can you conclude about the effect of $\lambda$ on the dynamics?  Use your panel plot to illustrate the points in your discussion.For an engaging time waster, figure out how to put a symbolic $\lambda$ in the title of your plots. So, you will need to combine a symbolic $\lambda$ with a numeric value that changes with each plots title.  See ?mathplot for hints. 
+
+```{r, eval = TRUE, echo = key, include = key, fig.width=8, fig.height=10}
+#problem 1
+#duration of simulation
+tend = 30
+#set up vector to hold population data
+x = numeric(tend)
+
+#set up vector to hold time
+time = numeric(tend)
+#initial conditions
+x[1]=.01
+time[1] = 1
+
+#set up graphic device
+par(mfrow=c(4,4)) 
+par(ask = FALSE)
+#sequence to control for loop
+l = seq(from = .25, to = 4, by = .25)
+
+x_at_t = function(lambda,x,t) x[t]=lambda*x[t-1]*(1-x[t-1])
+
+
+for(lambda in l){
+	for(t in 2:tend){
+		#x[t]=lambda*x[t-1]*(1-x[t-1])
+	  x[t] = x_at_t(lambda=lambda, x = x, t=t)
+		time[t] = t
+	}
+	z = as.character(lambda)
+	plot(time, x, type = "l")
+	title(main = (bquote(lambda == .(lambda)))) #see example in mathplot
+	#alternative statement
+	#plot(time,x,type = "l", main = z)
+}
+
+```
+
+
+2. Now set up a model experiment where you vary $\lambda$ in steps of .05 from $\lambda=1$ to $\lambda=4$.    Run the model for 100 time steps and save the values of $x_t$ for the last 50 time steps ($t= 51 – 100$) to a matrix where column one contains the value of $\lambda$ and column two contains the value of $x_t$.  (Discard the values of $x+t$ for $t < 51$).  Plot the values of $x$ at $t = 51$ to $100$ as a function of$\lambda$. The trick to this problem is thinking about how to store your data relative to the iteration that is going on (which is what makes it a good problem).  Think about it —- you need a vector that keeps track of $x_t$ as $t$ goes from 1 to 100.  You also need a matrix that consists of groups of rows of data, where each group consists of 50 rows of each value of  $\lambda$ in one column and the values of $x_t$ at time = 51-100 in the other column.  The full “stack” of these rows is the matrix.  As a hint, you could implement this by creating a “counter” within your loops (say, `j = j + 1`) that you use to index the rows of the array used to store the values of $\lambda$ and $x_t$.  At the end of your model experiment, that is, after all of the looping is complete, the counter `j` will equal the number of rows in the data matrix. Alternatively (and I think better) you might use the `rbind( )` function without needing a counter.  For example, consider the following code illustrating how to build a  matrix of data by accumulating rows one at a time:
+```{r}
+M=NULL
+for(j in 1:4){
+	v=c(1,1,j)
+	M=rbind(M,v)
+}
+M
+
+```
+
+Your plot should look something like this:
+
+```{r, include=TRUE, echo=key, eval=TRUE}
+#problem 2
+par(mfrow = c(1,1))
+l = seq(from = 1,to = 4, by = .05)
+#out = array(0,c(50*length(l),2))
+out = matrix(0,nrow=50*length(l), ncol=2)
+i = 1
+
+for(lambda in l){
+	#the next statement reinitializes x by creating an array of 100 0's 
+	#see ?rep
+	x = rep(0,times = 100)
+	x[1] = .01
+	for(t in 2:100){
+		x[t]=x_at_t(lambda=lambda,x=x, t=t)
+		if(t > 50){
+			out[i,1]=lambda
+			out[i,2]=x[t]
+			i = i + 1
+		}
+	}
+}
+plot(out[,1],out[,2],pch=19,cex=.5, cex.lab = 1.5, xlab= expression(lambda), 
+	ylab=expression(x[" t"]))
+title(main = "Bifurcation Diagram")
+
+```
+
+Hint:  before the first split in $x$, there are 50 dots stacked on top of one another.
+
+The plot you produce, done correctly, is called a bifurcation diagram.  Interpret what you see in this diagram.  It will be helpful to think about this diagram by comparing it to plots of $x_t$ as a function of $t$ for different values of $\lambda$ that you accomplished in the first exercise.  It might be helpful to rerun that code allowing time to go to 100 rather than 30.  Explain the relationship between the bifurcation diagram and the 16 plots that you produced in exercise (1).  
+
+### Fitting a logistic to data
+This exercise anticipates work that we will do during the next few weeks. One of the ways that we can estimate parameters in non-linear models is to minimize the sum of squared differences between the model predictions and the observations. Presume we have a deterministic model that makes predictions $\hat{y}_i$ of observations ${y_i}$ We search for a set of initial conditions and parameter values that minimize:
+
+$$\sum_{1=1}^n \left(y_i-\hat{y}_i\right)^2$$
+
+
+Find the best-fit parameter values and initial conditions for a logistic model of growth of the Rocky Mountain National Park elk population,  
+$$N_{t=1}=N_t+rN_t\left(1-\frac{N_t}{K}\right)$$
+
+ by finding the parameter values and initial conditions producing the minimum of the sum of squared differences between the observed population size and the predicted population size. Use the data `RMNP elk time series.csv'.
+
+Here are some hints.  For this problem, I want you to use a brute force approach to parameter estimation —- we will use more elegant methods later. To make this problem a bit easier, you can reasonably guess that the value of $r$ is some where between .1 and .3.  Moreover, you can look at the data and be sure that $K$ is somewhere between 800 and 1200 and that the initial conditions, $N_1$ are somewhere between and 200 and 500.  So, to estimate the parameters, you will calculate the sum of squared error for all possible combinations of parameter values and find the combination that gives the minimum SSE.  
+
+Here are some more hints.  Set up a matrix with 4 columns, one each for $N_1, r, K$, and SSE.  Set up 3 nested loops to vary each parameter at fairly coarse intervals to start with (say 10 for $N_1$ and $K$, and .05 for $r$).  Within the innermost parameter loop, you will have a loop for time, calculating the squared error for each model prediction and observation.  After you exit this loop, you can calculate sum of the squared error over all of the years in your simulation (= 41).  You will need a counter embedded in this loop to index the rows of the SSE array.  Once you have created the SSE array, find the row of your containing the minimum value of SSE.  See the section on arrays in the R manual if you need refreshing on this. The `which()` function will prove useful. This row will contain your parameter estimates.  
+
+After you have your program working, you can make the intervals in you for loop finer to give you more accurate estimates of the parameters (say 5 for $N_1$ and $K$, and .01 for $r$).
+
+Subset the data to create 3 data sets so that you can the plot the sum of squared error as a function of each model parameter and the initial condition ($r, K, N_1$) with the other parameter and initial conditions are set a their best fit values.  You plots should look something like those shown below. 
+
+This exercise offers a great way for you to practice your knowledge of looping and manipulation of arrays.  However, the “brute force” method is almost never used to estimate parameters from data.  What are the problems with this approach?
+
+```{r, eval=TRUE, echo=key, include=key}
+#get data, must be in same directory as .rmd file
+elk.data=read.csv("RMNP elk time series.csv")
+#set up search sequences for parameter values
+rseq = seq(.10, .30, .01)
+N1seq = seq(200,400,5)
+Kseq = seq(800,1200,5)
+#Figure out number of rows needed in data matrix
+len.r = length(rseq)
+len.Nstart = length(N1seq)
+len.K = length(Kseq)
+nrow = len.r*len.Nstart*len.K
+
+#Set up matrix to hold SSE for all combinatinos of parameter values
+SSE = array(0,c(nrow,4))
+
+
+years = length(elk.data[,1])
+#set upn vector to hold SSE for each year
+squared_errors = numeric(years)
+#set up vector to hold population size predicted by model
+N=numeric(years)
+
+#counter for SSE matrix
+row_count = 1
+
+for(Nstart in N1seq){
+	N[1] = Nstart
+	for(r in rseq){
+		for(K in Kseq){
+			for(t in 2:years){
+				N[t]= N[t-1] + r*N[t-1]*(1-N[t-1]/K)
+				squared_errors[t] = (N[t]-elk.data[t,2])^2
+				}
+			SSE[row_count,1] = Nstart
+			SSE[row_count,2] = r
+			SSE[row_count,3] = K
+			SSE[row_count,4] = sum(squared_errors)
+			row_count = row_count + 1
+		}
+	}
+}
+
+head(SSE)
+
+#find row with minnimum SSE:
+SSE[SSE[,4]==min(SSE[,4])]
+# alternatively,
+
+z=which(SSE[,4]==min(SSE[,4]))
+SSE[z,]
+
+```
+Your plots should look like this:
+
+```{r, echo=key, include=TRUE, eval=TRUE}
+best.r=SSE[z,2]
+best.K=SSE[z,3]
+best.N1 =SSE[z,1] 
+par(mfrow = c(2,2))
+par(mfrow = c(2,2))
+rplot = SSE[SSE[,1]==best.N1 & SSE[,3]==best.K,c(2,4)]
+plot(rplot[,1],rplot[,2], pch = 19, type="l", xlab = "r", ylab = "SSE"  )
+title(main = "r best fit")
+Kplot = SSE[SSE[,2]==best.r & SSE[,1]==best.N1 ,c(3,4)]
+plot(Kplot[,1],Kplot[,2], pch = 19, type="l", xlab = "K", ylab = "SSE")
+title(main = "K best fit")
+N0plot = SSE[SSE[,2]==best.r & SSE[,3]==best.K ,c(1,4)]
+plot(N0plot[,1],N0plot[,2], pch = 19, type="l", xlab = expression(N[1]), ylab = "SSE")
+title(main = expression(paste(N[1], " best fit")))
+
+```
+
+
+Now prepare a plot showing the fit of the model to the data as a line overlaid on the data points.  Your plot should look like this:
+```{r, echo=key}
+logistic = function(r,K,N1,n){
+  N = numeric(n)
+  N[1] = N1
+  for(t in 2:n) N[t]= N[t-1] + r*N[t-1]*(1-N[t-1]/K)
+  return(N)
+}
+
+y=logistic(r=best.r, K=best.K, N1=best.N1, n=nrow(elk.data))
+plot(elk.data$Year,elk.data$Population_size, xlab="Year", ylab="Number of elk")
+lines(elk.data$Year, y)
+```
+
+
+For the motivated and diligent, figure out how to write a function that includes vertical error bars for the standard errors. You may use a web search or book to give you some ideas. Plot the model, the means, and the SE. This plot should resemble:
+
+```{r echo=key}
+y.errorbars = function(x,y,ybar, ylab=x, xlab=y, main=" "){
+	plot(x,y,pch=16,,xlab=xlab, ylab = ylab, main=main, ylim=c(0,1800))
+	arrows(x,y-ybar,x,y+ybar, code=3, angle=90, length=.01)
+}
+y.errorbars(x=elk.data$Year,y=elk.data$Population_size, ybar=elk.data$SE, xlab="Year", ylab="Number of elk")
+lines(elk.data$Year, y)
+```
+
+
+
+
+
+### Literature cited
+May, R. M.  1976.  Simple mathematical models with very complicated dynamics.  Nature 261:459-467.
