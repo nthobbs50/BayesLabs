@@ -1,0 +1,88 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage[letterpaper]{geometry}
+\geometry{verbose,tmargin = 1in, bmargin = 1in, lmargin = 1in, rmargin = 1in, footskip = 1cm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{setspace}
+\doublespacing
+\input{"../middle_header.txt"}
+\chead{MCMC}
+
+\begin{document}
+
+\title{Markov Chain Monte Carlo Using Gibbs Sampling}
+
+\maketitle
+
+Accept-reject sampling methods like Metropolis  and Metropolis-Hastings require lots of computation time because of the several steps required to calculate likelihoods, compute ratios and choose proposals vs current values. These multiple steps are tedious to code, and require "tuning" to achieve optimum efficiency. 
+ Gibbs sampling allows us to streamline that process by making proposals that are so smart that we retain \emph{all }of them.  This makes Gibbs updates much easier to code and faster to execute than accept-reject sampling methods. We can usefully illustrate Gibbs updates by showing how we would use them to estimate the posterior distribution of the mean of a normally distributed random variable.  We will call this mean $\theta$. Recall that draws of the random variable $y_{i}$ from the normal distribution with mean $\theta$ arise as  
+
+\begin{equation}
+y_{i}\sim\text{normal}(\theta,\varsigma^{2}).
+\end{equation}
+
+We can think of $y_{i}$, of course, as an observation on some socio-ecological process. For this example, we begin by assuming that the variance of the observations, $\varsigma^{2}$ is \emph{known. }It is important to understand the ``knowing'' $\varsigma^{2}$ is not the same as calculating it as the variance of a sample dataset. Rather we are
+treating it here as a fully observed quantity, as if we had calculated it from \emph{all} of the potential observations. In the following discussion, it is particularly important to keep in mind that $\varsigma^{2}$ is the variance of the distribution of the \emph{observations} $\left(y_{i}\right)$, not the variance of the distribution of the mean of the observations
+$\left(\theta\right)$.
+
+We have prior information about $\theta$,
+
+\begin{equation}
+\theta\sim\text{normal}\left(\mu_{0},\sigma_{0}^{2}\right).
+\end{equation}
+
+This information might be informative or vague. Remember that $\mu_{0}$ and $\sigma_{0}^{2}$ are numeric arguments. They are known. We have a data set\textbf{ $\mathbf{y}$ }with $n$ observations. Given this information, we want to estimate the full-conditional distribution of $\theta$. If we assume that the variance in the likelihood ($\varsigma^{2}$) is\emph{ }known\emph{ $ $}then, 
+
+\begin{equation}
+\left[\theta|\cdot\right]\propto\prod_{i=1}^{n}\text{normal}\left(y_{i}|\theta,\varsigma^{2}\right)\text{normal}\left(\theta|\mu_{0},\sigma_{0}^{2}\right).\label{eq:normal mean conjugate relationship}
+\end{equation}
+
+We define $\mu_{1}$ and $\sigma_{1}^{2}$ as the parameters of the conditional posterior distribution of $\theta$, that is 
+
+\begin{equation}
+\left[\theta|\cdot\right]=\text{normal}(\mu_{1},\sigma_{1}^{2}).\label{eq:distribution of theta}
+\end{equation}
+
+Note that $\sigma_{1}^{2}$ is the updated variance of the distribution of the \emph{mean} not the variance of the distribution of the \emph{observations}, which of course is $\varsigma^{2}$. Note that we are treating $\varsigma^{2}$ as known. Equation \ref{eq:normal mean conjugate relationship} shows that we have a normal likelihood for the mean with known variance and a normal prior on the mean, which are conjugates. When this is the case, we can calculate the parameters of the conditional posterior distribution of $\theta$ directly using the formulas
+
+\begin{eqnarray}
+\mu_{1} & = & \frac{\left(\frac{\mu_{0}}{\sigma_{0}^{2}}+\frac{\sum_{i=1}^{n}y_{i}}{\varsigma^{2}}\right)}{\left(\frac{1}{\sigma_{0}^{2}}+\frac{n}{\varsigma^{2}}\right)}\label{eq:conjugate formula for normal mean I}\\
+\sigma_{1}^{2} & = & \left(\frac{1}{\sigma_{0}^{2}}+\frac{n}{\varsigma^{2}}\right)^{-1}.\label{eq:Conjugate for normal mean II}
+\end{eqnarray}
+
+Notice that every quantity on the right hand side of these equations is known; $\mu_{0}$ and $\sigma_{0}^{2}$ are known as priors. The $y_{i}$ are observations in hand, and we are assuming (for now) that $\varsigma^{2}$ is known. So, we have all we need to know to make a draw from the distribution of $\theta$ using equation \ref{eq:distribution of theta}
+because we know $\mu_{1}$ and $\sigma_{1}^{2}$. So, why wouldn't we just use equations $ $\ref{eq:conjugate formula for normal mean I} and \ref{eq:Conjugate for normal mean II} to estimate the parameters of the posterior of $\theta$ and be done with it? Because we must assume that $\varsigma^{2}$ is known, which is virtually never the case. Somehow we must learn about $\varsigma^{2}$ to estimate $\theta$.
+
+So, what about $\varsigma^{2}$? Again the observations arise from $y_{i}\sim\text{normal}\left(\theta,\varsigma^{2}\right)$ and we seek to understand the conditional\footnote{The distribution is conditional because we must know $\theta.$} posterior distribution of $\varsigma^{2}$. If we assume that $\theta$ is known, then 
+
+\begin{equation}
+\left[\varsigma^{2}|\cdot\right]\propto\prod_{i=1}^{n}\text{normal}\left(y_{i}|\theta,\varsigma^{2}\right)\text{inverse gamma}\left(\varsigma^{2}|\alpha_{0},\beta_{0}\right).\label{eq:posterior distribution of var sigma}
+\end{equation}
+
+We define the parameters of the full-conditional distribution of $\varsigma^{2}$ as $\alpha_{1}$ and $\beta_{1}$ so that
+
+\begin{equation}
+\left[\varsigma^{2}|\cdot\right]=\text{inverse gamma}\left(\alpha_{1},\beta_{1}\right).
+\end{equation}
+where $\alpha_0$ and $\beta_0$ are the parameters of the prior distribution of $\varsigma^2$. We have a normal likelihood with a known mean and unknown variance and an inverse gamma prior on the variance. When this is true we can calculate the parameters of the full-conditional distribution of $\varsigma^{2}$ using 
+
+\begin{eqnarray}
+\alpha_{1} & = & \alpha_{0}+\frac{n}{2}\label{eq:conjugate formula for normal variance I}\\
+\beta_{1} & = & \beta_{0}+\frac{\sum_{i=1}^{n}{(y_{i}-\theta)^{2}}}{2}\,.\label{eq:conjugate formula for normal variance II}
+\end{eqnarray}
+
+Again, remember that $\beta_{0}$ and $\alpha_{0}$ are known arguments to priors, so in practice they would be numeric. It follows that all quantities on the right hand side of equations \ref{eq:conjugate formula for normal variance I} and \ref{eq:conjugate formula for normal variance II} are known. It is also critical to understand that $\beta_1$ is a \emph{scale} parameter.
+
+It might seem that we have tied ourselves in a knot. We need to know $\varsigma^{2}$ to estimate $\theta$ and we need to know $\theta$ to estimate $\varsigma^{2}.$ This is just the kind of problem that MCMC can solve because at each step in the chain we pretend all of the parameters save one are \emph{known}. Equations \ref{eq:conjugate formula for normal mean I} - \ref{eq:conjugate formula for normal variance II} give us all we need to construct a very fast sampler for $\theta$ and $\varsigma^{2}$. Define $k$ as the iteration in the chain. So, element 100 in the chain is indexed by $k=100$. Be sure you understand that $k$ is a superscript not an exponent. The algorithm is:
+
+\begin{enumerate}
+\item Use the current value of $\varsigma^{2(k)}$ to calculate $\mu_{1}^{(k+1)}$ and $\sigma_{1}^{2(k+1)}$ from equations \ref{eq:conjugate formula for normal mean I} and \ref{eq:Conjugate for normal mean II}. Make a draw from $\theta^{(k+1)}\sim\text{normal}\left(\mu_{1}^{(k+1)},\sigma_{1}^{2(k+1}\right)$ and store it in the chain.
+\item Use the updated value of $\theta^{(k+1)}$ to calculate $\alpha_{1}^{(k+1)}$ and $\beta_{1}^{(k+1)}$ using equations \ref{eq:conjugate formula for normal variance I} and \ref{eq:conjugate formula for normal variance II}. Make a draw from $\varsigma^{2(k+1)}\sim\text{inverse gamma}\left(\alpha_{1}^{(k+1)},\beta_{1}^{(k+1)}\right)$ and store it in the chain. 
+\item Repeat 1-2.
+\end{enumerate}
+
+A sufficient number of repetitions usually converges on the posterior distributions of $\theta$ and $\varsigma^{2}$ much more quickly than if we used an accept-reject sampling method like Metropolis-Hastings or Metropolis. However, the estimates would be the same.
+
+\end{document}

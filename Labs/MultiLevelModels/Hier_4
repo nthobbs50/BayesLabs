@@ -1,0 +1,34 @@
+
+    model{
+    #priors for within site model######
+    sigma ~ dunif(0,200)
+    tau.reg <- 1/sigma^2
+    
+    #likelihood for data, note that data are on log scale.
+    for(i in 1:length(y.emission)){
+      log_mu[i] <- alpha[y.group[i]] + beta[y.group[i]] * y.n.input[i]
+      y.emission[i] ~ dnorm(log_mu[i], tau.reg)
+    }
+    # Model for group intercept and slope:
+    for(j in 1:y.n.sites){
+        alpha[j] <- B[j,1]  #group level intercept
+        beta[j]  <- B[j,2]  #group level slope
+        B[j,1:2] ~ dmnorm(B.hat[j,1:2], Tau.B)  
+        B.hat[j,1] <- mu.alpha  #required by JAGS syntax
+        B.hat[j,2] <- mu.beta   #required by JAGS syntax
+    }
+    mu.alpha ~ dnorm(0,.0001)  #mean intercept
+    mu.beta ~ dnorm(0, .0001)  #mean slope
+    #Inverse of covariance matrix required by JAGS
+    Tau.B[1:2,1:2] <- inverse(Sigma.B[1:2,1:2])
+    #Elements of covariance matrix
+    Sigma.B[1,1] <- sigma.alpha^2
+    sigma.alpha ~ dunif(0,200)
+    Sigma.B[2,2] <- sigma.beta^2
+    sigma.beta ~ dunif(0,200)
+    Sigma.B[1,2] <- rho*sigma.alpha*sigma.beta  # covariance is correlation coef. x product of variances
+    Sigma.B[2,1] <- Sigma.B[1,2]
+    rho ~ dunif(-1,1)
+    } #end of model
+    
+    

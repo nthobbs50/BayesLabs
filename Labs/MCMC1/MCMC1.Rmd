@@ -1,0 +1,273 @@
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  TeX: { 
+      equationNumbers: {
+ 
+            autoNumber: "all",
+            formatNumber: function (n) {return +n}
+      } 
+  }
+});
+</script>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:20px;right:125px;width:150px;height=150px" />
+
+
+<style>
+
+/* uncomment out this to generate exercise */
+#.hider {display: none;} 
+#.hider2 {display: inline;} 
+
+/* uncomment out this to generate key */
+.hider {display: inline;} 
+.hider2 {display: none;} 
+
+</style>
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Markov chain Monte Carlo
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+#### Table of Contents
+
+[I. Motivation][]
+
+[II. Problem][]
+
+[III. Preliminaries][]
+
+[IV. Writing a sampler][]
+
+[V. Trace plots and plots of marginal posteriors][]
+
+```{r preliminaries, include=FALSE}
+rm(list = ls())
+library(knitr)
+library(actuar)
+
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = TRUE)
+
+# uncomment out this to generate key
+ nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+#nokey = TRUE; key = FALSE
+```
+
+<br>
+
+#### I. Motivation
+
+This problem challenges you to understand how the wickedly clever Markov chain Monte Carlo algorithm takes a multivariate joint distribution and breaks it into a series of univariate, marginal distributions that can be approximated one at a time.  There are only two unknowns in this problem, but the same principles and approach would apply if there were two hundred.  The accompanying document, MCMCMath.pdf, describes the math that stands behind the coding that you will do here. You should study this thoroughly before proceeding.
+
+<br>
+
+#### II. Problem
+
+You will write code using conjugate relationships, also known as Gibbs updates, to draw samples from marginal posterior distributions of a mean and variance. 
+
+<br>
+
+#### III. Preliminaries
+
+1. Set the seed for random numbers = 1 in R with `set.seed(1)`. 
+
+2. Load the `actuar` library, which contains functions for inverse gamma distributions needed in step 4. 
+
+3. Simulate 100 data points from a normal distribution with mean $\theta = 100$ and variance $\varsigma^{2} = 25$.  You will use these data to test the conjugate functions that you will write in 4 below. Call the data set `y`. Be careful here. R requires the standard deviation, not the variance, as a parameter. Simulating data is always a good way to test methods. Your method should be able to recover the generating parameters given a sufficiently large number of simulated observations. 
+  
+```{r, tidy = TRUE, tidy.opts = list(width.cutoff = 100), echo = key, include = key}
+set.seed(1)
+library(actuar)
+varsigma.sq = 25
+theta = 100
+n = 100
+
+y = rnorm(n, theta, sqrt(varsigma.sq))
+```
+
+4. We have provided a function called `draw_mean` that 
+calculates the parameters of the posterior distributions for $\theta$ using a normal-normal conjugate relationship where the variance is assumed to be known. The function returns a draw from that distribution. Study the notes relative to this function.
+
+5. We provided a function called `draw_var` that
+calculates the parameters of the posterior distributions for $\varsigma^2$ using a inverse gamma-normal conjugate relationship where the mean is assumed to be known. The function returns a draw from that distribution.
+
+
+
+```{r, echo = TRUE, include = TRUE}
+# normal likelihood with normal prior conjugate for mean, assuming variance is known
+# mu_0 is prior mean
+# sigma.sq_0 is prior variance of mean
+# varsigma.sq is known variance of data
+
+draw_mean = function(mu_0, sigma.sq_0, varsigma.sq, y){
+	mu_1 =((mu_0 / sigma.sq_0 + sum(y)/varsigma.sq)) / (1/sigma.sq_0 + length(y)/varsigma.sq)
+	sigma.sq_1 = 1/(1 / sigma.sq_0 + length(y) / varsigma.sq)
+	z = rnorm(1, mu_1, sqrt(sigma.sq_1))
+	param = list(z = z, mu_1 = mu_1, sigma.sq_1 = sigma.sq_1)
+	return(param)
+}
+
+# normal likelihood with gamma prior conjugate relationship for variance, assuming mean is known
+# alpha_0 is parameter of prior for variance
+# beta_0 is parameter of prior for variance
+# Note that this uses scale parameterization for inverse gamma
+
+draw_var = function(alpha_0, beta_0, theta, y){
+	alpha_1 = alpha_0 + length(y) / 2
+	beta_1 = beta_0 + sum((y - theta)^2) / 2
+	z = rinvgamma(1, alpha_1, scale = beta_1)
+	param = list(z = z, alpha_1 = alpha_1, beta_1 = beta_1)
+	return(param)
+}
+
+```
+
+Check the functions by simulating a large number of data points from a normal distribution using a mean and variance of your own choosing.  Store the data points in a vector called `y_check`.
+```{r, echo=key, include=key}
+check_mean=32; check_sigma = 3.2
+check_var=check_sigma^2
+n.draw=10000
+y_check=rnorm(n.draw,mean=check_mean,sd=check_sigma)
+
+var_vec = numeric(n.draw)
+mean_vec = numeric(n.draw)
+
+for(i in 1:n.draw){
+  var_vec[i] = draw_var(alpha_0=.001, beta_0=.001,theta=check_mean,y=y_check)$z
+  mean_vec[i] = draw_mean(0,10000,check_sigma^2,y_check)$z
+} 
+
+mean(var_vec)
+mean(mean_vec)
+```
+
+
+<br>
+
+#### IV. Writing a sampler
+
+Now execute these steps:
+
+1. Set up a matrix for storing samples from the posterior distribution of the mean. The number of rows should equal the number of chains (3) and number of columns should equal the number of iterations (10,000). Do the same thing for storing samples from the posterior distribution of the variance. 
+
+```{r, echo = key, include = key}
+n.iter = 10000
+n.chains = 3
+pvar = matrix(nrow = n.chains, ncol = n.iter)
+pmean = matrix(nrow = n.chains, ncol = n.iter)
+```
+
+2. Assign initial values to the first column of each matrix, a different value for each of the chains. These can be virtually any value within the support of the random variable. 
+
+```{r, echo = key, include = key}
+pmean[1:3, 1] =c (50, 20, 1)
+pvar[1:3, 1] = c(10, 5, .1)
+```
+
+3. Set up nested `for` loops to iterate from one to the total number of iterations for each of the three chains for each parameter. Use the conjugate functions `draw_mean` and `draw_var` to draw a sample from the distribution of the mean using the value of the variance at the current iteration. Then make a draw from the variance using the current value of the mean. Repeat. Assume vague priors for the mean and variance:
+
+$$[\,\theta\,] = \textrm{normal}(\,\theta \mid (0, 10000\,)$$
+$$[\,\varsigma^{2}\,] = \textrm{inverse gamma}(\,\varsigma^{2} \mid .001, .001\,)$$
+
+```{r, echo = key, include = key}
+for(t in 2:n.iter){
+  for (j in 1:n.chains){
+		pmean[j, t] = draw_mean(mu_0 = 0, sigma.sq_0 = 10000, varsigma.sq = pvar[j, t - 1], y = y)$z
+		pvar[j, t] = draw_var(alpha_0 =.001, beta_0 = .001, theta = pmean[j ,t], y = y)$z
+    #Uncomment to reverse order of draws required by problem 8. Note the change in indexing for pvar on the rhs.
+    #pvar[j, t] = draw_var(alpha_0 =.001, beta_0 = .001, theta = pmean[j ,t-1], y = y)$z
+     
+    #pmean[j, t] = draw_mean(mu_0 = 0, sigma.sq_0 = 10000, varsigma.sq = pvar[j, t - 1], y = y)$z
+  }		
+}
+```
+
+<br>
+
+#### V. Trace plots and plots of marginal posteriors
+
+1. Discard the first 1000 iterations as burn-in. On the same figure, plot the value of the mean as a function of iteration number for each chain. This is called a trace plot. 
+
+```{r, fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+burnin = 1000
+samplesKept <- (burnin+1):n.iter
+
+plot(samplesKept, pmean[1, samplesKept], typ = "l", ylab = expression(theta), xlab = "Iteration", col = "yellow")
+lines(samplesKept, pmean[2, samplesKept], typ = "l", col = "red")
+lines(samplesKept, pmean[3, samplesKept], typ = "l", col = "green")
+```
+
+2. For all chains combined, make a histogram of the samples of the mean retained after burn-in. Put a vertical line on the plot showing the generating value. 
+
+```{r, fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+hist(pmean[, samplesKept], breaks = 100, freq = FALSE, main = expression(theta), xlim = c(95, 105), xlab = "Value of MCMC samples", col = "gray")
+lines(density(pmean[, samplesKept]), col = "red", lwd = 3)
+abline(v = theta, lty = "dashed", col = "blue", lwd = 4)
+```
+
+3. Repeat steps 1-2 for the variance.
+
+```{r, fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key}
+plot(samplesKept, pvar[1, samplesKept], typ = "l", ylab = expression(varsigma^2), xlab = "Iteration", col = "yellow")
+lines(samplesKept, pvar[2, samplesKept], typ = "l", col = "red")
+lines(samplesKept, pvar[3, samplesKept], typ = "l", col = "green")
+
+hist(pvar[, samplesKept], breaks = 100, freq = FALSE, main = expression(varsigma^2), xlab = "Value of MCMC samples", col = "gray")
+lines(density(pvar[, samplesKept]), col = "red", lwd = 3)
+abline(v = varsigma.sq, lty = "dashed", col = "blue", lwd = 4)
+```
+
+4. For both $\theta$ and $\varsigma^{2}$, calculate the mean of all the chains combined and its standard deviation. Interpret these quantities. 
+
+```{r, echo = key, include = key}
+mean(pmean[, samplesKept])
+sd(pmean[, samplesKept]) 
+mean(pvar[, samplesKept])
+sd(pvar[, samplesKept]) 
+```
+
+<div class="hider">
+We learned in the lecture on basic probability that the first moment of a distribution can be approximated by computing the mean of many random draws from the distribution and the second central moment can be approximated by computing the variance of many random draws from the distribution.
+
+</div>
+5. Compare the standard deviation of the posterior distribution of $\theta$ with an approximation using the standard deviation of the data divided by the square root of the sample size.  What is this approximation called in the frequentist world? 
+
+```{r, echo = key, include = key}
+sd(y)/sqrt(length(y))
+```
+<div class="hider">
+The standard deviation of the posterior distribution of $\theta$ closely matches the approximation known as the standard error in frequentist lingo.
+
+</div>
+6. Vary the number of values in the simulated data set, e.g., n = 10,100,1000. What happens to the mean and variance of the posterior distributions as $n$ gets large? We do not exactly recover the generating values of $\theta$ and $\varsigma^{2}$ when $n$ is small and the variance is further away from its generating value than the mean is. Why?
+
+<div class="hider">
+The mean of the posterior distribution of $\theta$ and $\varsigma^2$ will not match the generating value when the sample size is small because simulated data represent one realization of stochastic process. This stochasticity can result in means and variances in small data sets that are quite different from the generating values. The variance is further away because it is more sensitive to extreme values that are rarely included in the simulated data.
+
+</div>
+
+7. Make the burnin = 1 instead of 1000. Does this change your results? Why or why not? 
+<br> 
+
+<div class="hider">
+Gibbs updates are extremely efficient.  Convergence is virtually immediate for this simple, two parameter model.  This will not be true for accept-reject updates or for Gibbs updates with many parameters.
+
+</div>
+
+8. Reverse the order of the conjugate functions in step IV.3 so that the variance is drawn first followed by the mean. (Be careful, this involves a bit more than simply reversing the order of the functions in the loop). Does this reordering have an effect on the posteriors? Why or why not? 
+
+<div class="hider">
+The MCMC algorithm is not sensitive to the order that samples are drawn from the full-conditionals.
+
+</div>
+
+
+<br>
+

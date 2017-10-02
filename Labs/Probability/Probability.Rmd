@@ -1,0 +1,623 @@
+---
+output: 
+  html_document:
+    theme: paper
+    highlight: kate
+    css: style.css
+---
+
+<style>
+
+/* comment out to generate key */
+#.hider {display: none;}
+#.hider2 {display: inline;}
+
+/* comment out to generate exercise */
+.hider {display: inline;}
+.hider2 {display: none;} 
+
+</style>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Probability Lab
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+[I. Motivation][]
+
+[II. The chain rule of probability][]
+
+[III. Converting DAGs to joint distributions][]
+
+[IV. Converting joint distributions to DAGs][]
+
+[V. Simplifying][]
+
+[VI. Interpreting and factoring][]
+
+[VII. Probability Distributions][]
+
+[VIII. Marginal distributions][]
+
+[IX. Moment Matching][]
+
+
+```{r preliminaries, include = FALSE}
+rm(list = ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE)
+
+# uncomment out this to generate key
+ nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+# nokey = TRUE; key = FALSE
+```
+
+<br>
+
+#### I. Motivation
+
+Bayesian analysis is predicated on the idea that we learn about unobserved quantities from quantities we are able to observe.  All observed quantities (i.e. parameters, latent states, missing data, and even the data themselves before they are observed) are treated as random variables in the Bayesian approach.  All Bayesian analysis extends from the laws of probability, that is, from the "mathematics of random variables."
+
+Random variables are quantities whose value is determined by chance.  Statistical distributions represent how "chance" works by specifying the probability that a random variable takes on a value (in the discrete case) or falls within a range of values (in the continuous case).  The goal of Bayesian analysis is to discover the characteristics of probability distributions that govern the behavior of random variables of interest, for example, the size of a population, the rate of nitrogen accumulation in a stream, the diversity of plants on a landscape, the change in lifetime income that occurs with changing level of education, the stress levels of juvenile elephants, the political party that will win a congressional district, etc.
+
+It follows that, understanding the laws of probability and statistical distributions provides the foundation for Bayesian analysis. Keep in mind the following learning objectives
+
+- Understand the concepts of conditional and independent random variables.
+- Be able to write out joint distributions of random variables given Bayesian networks (directed acyclic graphs).
+- Become familiar with frequently used statistical distributions representing discrete and continuous random variables.
+- Learn R functions for calculating properties of distributions and for sampling from them.
+- Understand discrete and continuous marginal distributions.
+- Use moment matching, a procedure key to linking models to data in the Bayesian framework.
+
+<br>
+
+#### II. The chain rule of probability
+
+1\. Use the chain rule of probability to factor the joint distribution $\Pr(\theta_1,\theta_2, \theta_3,\theta_4)$ into a joint conditional distribution.
+
+<div class="hider">
+<div class="boxBorder">
+\begin{align}
+\Pr\big(\theta_1,\theta_2,\theta_3,\theta_4\big)=\\
+&\times\Pr\big(\theta_1 \mid \theta_2,\theta_3,\theta_4\big)\\
+&\times\Pr\big(\theta_2 \mid \theta_3,\theta_4\big)\\
+&\times\Pr\big(\theta_3 \mid \theta_4\big)\\
+&\times\Pr\big(\theta_4\big)
+\end{align}
+
+The order doesn't matter. The following is also correct:
+
+\begin{align}
+\Pr\big(\theta_1,\theta_2,\theta_3,\theta_4\big)=\\
+&\times\Pr\big(\theta_4 \mid \theta_2,\theta_3,\theta_1\big)\\
+&\times\Pr\big(\theta_2 \mid \theta_3,\theta_1\big)\\
+&\times\Pr\big(\theta_3 \mid \theta_1\big)\\
+&\times\Pr\big(\theta_1\big)
+\end{align}
+
+as are many other variations.
+</div>
+</div>
+
+<br>
+
+2\. Consider the following factored joint distribution:
+$$\Pr\big(\theta,w,\eta,\alpha\big)=\Pr\big(\alpha \mid w,\eta,\theta\big)\Pr\big(w \mid \eta,\theta\big)\Pr\big(\eta \mid \theta\big)\Pr\big(\theta\big)$$
+Simplify this equation using the knowledge that $\eta$ and $\theta$ are independent and that $w$ and $\theta$ are independent.
+
+<div class="hider">
+<div class="boxBorder">
+$$\Pr\big(\theta,w,\eta,\alpha\big)=\Pr\big(\alpha \mid w,\eta,\theta\big)\Pr\big(w \mid \eta\big)\Pr\big(\eta\big)\Pr\big(\theta\big)$$
+</div>
+</div>
+
+<br>
+
+#### III. Converting DAGs to joint distributions
+
+Write out the joint and conditional distributions for the following Bayesian networks. For discrete random variables, $[A]$ is equivalent to $\Pr(A)$. For continuous random variables $[A]$ is the probability density of $A$.
+
+<br>
+
+<img src="DAG1.png" style="float: left; width: 25%; margin-right: 5%; margin-left: 0%; margin-bottom: 0.5em;">
+<img src="DAG2.png" style="float: left; width: 25%; margin-right: 5%; margin-bottom: 0.5em;">
+<img src="DAG3.png" style="float: left; width: 34%; margin-right: 5%; margin-bottom: 0.5em;">
+<p style="clear: both;">
+
+<br>
+
+<img src="DAG4.png" style="float: left; width: 34%; margin-right: 5%; margin-left: 15%; margin-bottom: 0.5em;">
+<img src="DAG5.png" style="float: left; width: 34%; margin-right: 5%; margin-bottom: 0.5em;">
+<p style="clear: both;">
+
+<div class="hider">
+<div class="boxBorder">
+\begin{eqnarray}
+& &\textrm{1.}\quad\Pr\big(a,b,c,d,e\big)  = 
+\Pr\big(a \mid b,c\big)\Pr\big(b\mid d,e\big)\Pr\big(c\big)\Pr\big(d\big)\Pr\big(e\big) \\[1em]
+& &\textrm{2.}\quad\Pr\big(y,z,\beta_1,\beta_2,\theta_p,\theta_d\big)  = \Pr\big(y\mid z,\theta_d\big)\Pr\big(z \mid \theta_p\big)\Pr\big(\theta_d\mid\beta_1,\beta_2\big)\Pr\big(\theta_p\big)\Pr\big(\beta_1\big)\Pr\big(\beta_2\big)\\[1em]
+& &\textrm{3.}\quad\Pr\big(y,x,\mu,\phi_1,\phi_2,\sigma,z \big) = \Pr\big(y\mid x, z \big) \Pr\big(x \mid \mu, \sigma \big)\Pr\big(z \mid \phi_1,\phi_2\big)\Pr\big(\sigma\big)\Pr\big(\phi_1\big)\Pr\big(\phi_2\big)\Pr\big(\mu\big)\\[1em]
+& &\textrm{4.}\quad\Pr\big(y_1,y_2,z,\theta_1,\theta_2,\gamma_1,\gamma_2,\gamma_3\big) = \Pr\big(y_1\mid\theta_1,z\big)\Pr\big(y_2\mid \theta_2,z\big)\Pr\big(z\mid\gamma_1,\gamma_2,\gamma_3\big)\Pr\big(\theta_1\big)\Pr\big(\theta_2\big)\Pr\big(\gamma_1\big)\Pr\big(\gamma_2\big)
+\Pr\big(\gamma_3\big)\\[1em]
+& &\textrm{5.}\quad\Pr\big(A,B,D,E,F,H\big) = \Pr\big(A \mid D,E\,\big)\Pr\big(D \mid H\big)\Pr\big(B \mid H,F\big)\Pr\big(E\big)\Pr\big(H\big)\Pr\big(F\big)
+\end{eqnarray}
+</div>
+</div>
+
+<br>
+
+#### IV. Converting joint distributions to DAGs
+
+Draw Bayesian networks (DAGs) for the joint and conditional distributions below.
+
+\begin{eqnarray}
+& &\textrm{I.}\quad \Pr\big(A,B\big)  =  \Pr\big(A\mid B\big)\Pr\big(B\big)\\[1em]
+& &\textrm{II.}\quad \Pr\big(A,B,C\big)  =  \Pr\big(A \mid B,C\big)\Pr\big(B\mid C\big)\Pr\big(C\big)\\[1em]
+& &\textrm{III.}\quad \Pr\big(A,B,C,D\big)  =  \Pr\big(A \mid C\big)\Pr\big(B \mid C\big)\Pr\big(C \mid D\big)\Pr\big(D\big)\\[1em]
+& &\textrm{IV.}\quad \Pr\big(A,B,C,D,E\big)  =  \Pr\big(A \mid C\big)\Pr\big(B\mid C\big)
+ \Pr\big(C \mid D,E\big)\Pr\big(D\big)\Pr\big(E\big)\\[1em]
+& &\textrm{V.}\quad \Pr\big(A,B,C,D\big)  =  \Pr\big(A \mid B,C,D\big)\Pr\big(B \mid C,D\big)\Pr\big(C \mid D\big)\Pr\big(D\big)\\[1em]
+& &\textrm{VI.}\quad \Pr\big(A,B,C,D\big)  =  \Pr\big(A \mid B,C,D\big)\Pr\big(C \mid D\big)\Pr\big(B\big)\Pr\big(D\big)\\[1em]
+\end{eqnarray}
+
+<br>
+
+<div class="hider">
+<div class="boxBorder">
+<center>
+![](DAGS.png)
+</center>
+</div>
+</div>
+  
+<br>
+
+#### V. Simplifying
+
+Simplify the expression below, given that $z_2$ and $z_3$ are independent random variables. 
+$$ \Pr\big(z_1,z_2,z_3\big)=\Pr\big(z_1\mid z_2,z_3\big)\Pr\big(z_2 \mid z_3\big)\Pr\big(z_3\big)$$
+
+<div class="hider">
+<div class="boxBorder">
+The expression simplifies to 
+$$ \Pr\big(z_1,z_2,z_3\big)=\Pr(z_1\mid z_2,z_3\big)\Pr\big(z_2\big)\Pr\big(z_3\big)$$
+because $\Pr\big(z_2\mid z_3\big) = \Pr\big(z_2\big)$ if $z_2$ and $z_3$ are independent.
+</div>
+</div>
+
+<br>
+
+#### VI. Interpreting and factoring
+
+The probability of an observation $y$ depends on a true ecological state of interest, $z$, and the parameters in a data model, $\boldsymbol\theta_d$. The probability of the true state $z$ depends on the parameters in an ecological process model, $\boldsymbol\theta_p$. We know that $\boldsymbol\theta_d$ and $\boldsymbol\theta_p$ are independent.  Write out a factored expression for the joint distribution, $\Pr\big(y,z,\boldsymbol\theta_d,\boldsymbol\theta_p\big)$. Drawing a Bayesian network will help.
+
+<div class="hider">
+<div class="boxBorder">
+$$\Pr\big(y,z,\boldsymbol\theta_d,\boldsymbol\theta_p\big) = \Pr\big(y \mid z,\boldsymbol\theta_d\big)\Pr\big(z \mid \boldsymbol\theta_p\big)\Pr\big(\theta_d\big)\Pr\big(\boldsymbol\theta_p\big)$$
+<div style="width:200px; height=200px; margin:0 auto;">
+<center>
+![](dag6.png)
+</center>
+</div>
+</div>
+</div>
+
+<br>
+<br>
+
+#### VII. Probability Distributions
+
+1\. We commonly represent the following general framework for linking models to data:
+
+$$\big[y_i \mid g\big(\mathbf\theta,x_i\big),\sigma^2\big],$$
+
+which represents the probability of obtaining the observation $y_i$ given that our model predicts the mean of a distribution $g(\mathbf\theta,x_i)$ with variance $\sigma^2$. Assume we have count data. What distribution would be a logical choice to model these data? Write out a model for the data.    
+
+<div class="hider">
+<div class="boxBorder">
+The Poisson is a logical choice. We predict the mean of the Poisson for each $x_i$, i.e. $\lambda_i = g\big(\mathbf\theta,x_i\big)$, which also controls the uncertainty because in the Poisson distribution the variance equals the mean.A model for the data is:
+
+$$ y_i \sim \textrm{Poisson}\big(g\big(\mathbf\theta,x_i\big)\big).$$
+</div>
+<br>
+</div>
+
+2\. Choose the appropriate distribution for the types of data shown below and justify your decision.
+
+* The mass of carbon in above ground biomass in square m plot.
+* The number of seals on a haul-out beach in the gulf of AK.
+* Presence or absence of an invasive species in forest patches.
+* The probability that a white male will vote republican in a presidential election.
+* The number of individuals in four mutually exclusive income categories.
+* The number of diseased individuals in a sample of 100.
+* The political party affiliation (democrat, republican, independent) of a voter. 
+
+<div class="hider">
+<div class="boxBorder">
+<center>
+Random variable  | Distribution | Justification 
+|------------------------------|-----------------|---------------------------------------------------------
+The mass of carbon in above ground biomass in square m plot.| gamma or lognormal | continuous and non-negative
+The number of seals on a haul-out beach in the gulf of AK. | Poisson or negative binomial | counts
+Presence or absence of an invasive species in forest patches. | Bernoulli | zero or one
+The probability that a white male will vote republican in a presidential election. | beta | zero to one
+The number of individuals in four mutually exclusive income categories. | multinomial | counts in more than two categories
+The number of diseased individuals in a sample of 100. | binomial | counts in two categories, number of successes on a given number of trials.
+The political party affiliation (democrat, republican, independent) of a voter. | multinomial | counts in more than two categories
+</center>
+</div>
+<br>
+</div>
+
+3\. Find the mean, variance, and 95% quantiles of 10000 random draws from a Poisson distribution with $\lambda=33$.
+
+``` {r, eval = TRUE, echo = key, include = key}
+lambda <- 33
+n <- 10000
+y <- rpois(n, lambda)
+mean(y)
+var(y)
+quantile (y, c(0.025, 0.975))
+```
+
+4\. Simulate one observation of survey data with five categories on a Likert scale, i.e. strongly disagree to strongly agree.  Assume a sample of 80 respondents and the following probabilities:
+
+a.  Strongly disagree = 0.07
+b.  Disagree = 0.13
+c.  Neither agree nor disagree = 0.15
+d.  Agree = 0.23
+e.  Strongly agree = 0.42
+    
+``` {r, eval = TRUE, echo = key, include = key}
+prob <- c(.07, .13, .15, .23, .42)
+size <- 80 
+n <- 1 
+rmultinom(n, size, prob)
+```
+
+5\. The average above ground biomass in a 1 km^2^ of sagebrush grassland is 103 g/m^2^, with a standard deviation of 23. You clip a 1 m^2^ plot. Write out the model for the probability density of the data point.  What is the probability density of an observation of 94 assuming the data are normally distributed? Is there a problem using normal distribution?  What is the probability that your plot will contain between 90 and 110 gm of biomass?
+
+<div class="hider">
+<div class="boxBorder">
+The normal distribution isn't an ideal choice because it extends below 0, which isn't possible for measurements of above ground biomass. Nonetheless:
+
+$$y_i \sim \textrm{normal}(103, 23^{2})$$
+</div>
+<br>
+</div>
+
+``` {r, eval = TRUE, echo = key, include = key}
+x <- 94 
+mean <- 103
+sd <- 23
+dnorm(x, mean, sd)
+
+q <- c(110, 90) 
+p.bound <- pnorm(q, mean = mean, sd = sd)
+p.bound[1] - p.bound[2]
+```
+
+6\. The prevalence of a disease in a population is the proportion of the population that is infected with the disease. The prevalence of chronic wasting disease in male mule deer on winter range near Fort Collins, CO is 12 percent. A sample of 24 male deer included 4 infected individuals. Write out a model that represents how the data arise. What is the probability of obtaining these data conditional on the given prevalence (p=0.12)?
+
+<div class="hider">
+<div class="boxBorder">
+
+$$y_i \sim \textrm{binomial}(24, 0.12)$$
+</div>
+<br>
+</div>
+
+``` {r, eval = TRUE, echo = key, include = key}
+x <- 4 
+size <- 24
+p <- 0.12
+dbinom(x, size, p)
+```
+
+7\. Researchers know that the true proportion of related age-sex classifications for elk in Rocky Mountain National Park are: *Adult females* (p = 0.56), *Yearling males* (p = 0.06), *Bulls* (p = 0.16), and *Calves* (p = 0.22). What is the probability of obtaining the classification data conditional on the known sex-age population proportions given the following counts?
+
+a.  Adult females (count = 65)
+b.  Yearling males (count = 4)
+c.  Bulls (count = 25)
+d.  Calves (count = 26)
+
+``` {r, eval = TRUE, echo = key, include = key}
+p <- c(0.56, 0.06, 0.16, 0.22)
+y <- c(65, 4, 25, 26)
+dmultinom(x = y, prob = p)
+```
+
+8\. Nitrogen fixation by free-living bacteria occurs at a rate of 1.9 g/N/ha/yr with a standard deviation ($\sigma$) of 1.4. What is the lowest fixation rate that exceeds 2.5% of the distribution?  Use a normal distribution for this problem, but discuss why this might not be a good choice. 
+
+``` {r, eval = TRUE, echo = key, include = key}
+mu <- 1.9
+sigma <- 1.4
+p <- 0.025
+qnorm(p, mu, sigma)
+```
+
+<div class="hider">
+<div class="boxBorder">
+The normal distribution isn't an ideal choice because it extends below 0, which isn't possible for measurements of nitrogen fixation.
+</div>
+<br>
+</div>
+
+9\. If you visited 50 counties, what is the probability that 5 would have a coal fired power plant, conditional on the hypothesis that $\phi=0.04$? Plot the probability that $y = 1...10$ counties have a coal fired power plant out of 50 counties visited. What is the probability that at least 5 counties have coal fired power plants? Plot the probability that fewer than $y$ counties have a coal fired power plant where $y$ takes on values between 1 and 10. Simulate data for 75 counties (set those with _no_ coal fired power plan equal to 1 and those _with_ a plant equal to 0).
+
+<div class="hider">
+<div class="boxBorder">
+$$y \sim \textrm{binomial}(\phi=0.04,n=50)$$
+</div>
+<br>
+</div>
+
+``` {r, eval = TRUE, echo = key, include = key}
+x <- 5
+phi <- 0.04
+n <- 50
+dbinom(x = x, p = phi, size = n)
+```
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 6, fig.height = 5, fig.align = 'center'}
+x <- seq(0, 10)
+y <- dbinom(x = x, p = phi, size = n)
+plot(x, y, type = 'h', ylab = expression(paste("Pr(y | ",phi," )"),), xlab = expression(y), lwd = 3, col = "blue")
+```
+
+``` {r, eval = TRUE, echo = key, include = key}
+q <- 4
+phi <- 0.04
+n <- 50
+(1 - pbinom(q = q, p = phi, size = n))
+```
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 6, fig.height = 5, fig.align = 'center'}
+x <- seq(0, 10)
+y <- pbinom(q = x - 1, p = phi, size = n) 
+plot(x, y, ylab = expression(paste("P(",Y <= y," | ",phi,")")), xlab = expression(y), pch = 16, col = "red", cex = 1.5)
+```
+
+<div class="hider">
+<div class="boxBorder">
+
+$$
+y \sim \textrm{Bernoulli}(\phi = 0.04)
+$$
+</div>
+<br>
+</div>
+
+``` {r, eval = TRUE, echo = key, include = key}
+n <- 75
+size <- 1
+phi <- 0.04
+(ySim <- rbinom(n = n, size = size, prob = phi))
+```
+
+<br>
+
+#### VIII. Marginal distributions
+
+The holy grail in Bayesian analysis is to discover the *marginal posterior distribution* of unobserved quantities (parameters, latent states, missing data, forecasts) from quantities we are able to observe (data).  It follows that we must understand what marginal distributions are.  
+
+Marginal distributions can be used to describe discrete or continuous random variables, but the continuous case is the one we will see most often in the course, so we emphasize it here.  This requires introducing a new distribution, the multivariate normal:
+
+$$ \mathbf{z} \sim \text{multivariate normal}({\boldsymbol{\mu}, \boldsymbol{\Sigma}}), $$
+where $\mathbf{z}_i$ is a vector of random variables, $\boldsymbol\mu$ is a vector of means (which can be the output of a deterministic model) and $\boldsymbol\Sigma$ is a variance covariance matrix. The diagonal of $\boldsymbol{\Sigma}$ contains the variances of the $\boldsymbol\mu$ and the off diagonal elements contain the covariances $\sigma_{ij}$ between $\mu_{i}$ and $\mu_{j}$. The covariance can be calculated as $\sigma_i\sigma_j\rho$ where $\sigma_i$ is the standard deviation of the $ith$ random variable, $\sigma_j$ is the standard deviation of the $jth$ random variable, and $\rho$ is the correlation between the random variable $i$ and $j$. The covariance matrix is square and symmetric. We will learn more about these matrices later in the course.  For now, an example will go a long way toward helping you understand the multivariate normal distribution.
+
+The rate of inflation and the rate of return on investments are know to be positively correlated. Assume that the mean rate of inflation is 0.03 with a standard deviation of 0.015.  Assume that the mean rate of return is 0.05 with a standard deviation of 0.07.  Assume the correlation between inflation and rate of return is 0.5.
+
+You can simulate interest rate and inflation data reflecting their correlation using the following function:
+
+```{r, fig.width = 6, fig.height = 5, fig.align = 'center'}
+library(MASS)
+
+DrawRates = function(n, int, int.sd, inf, inf.sd, rho.rates){
+
+  covar = rho.rates * int.sd * inf.sd
+  Sigma <- matrix(c(int.sd^2, covar, covar, inf.sd^2), 2, 2)
+  mu = c(int, inf)
+  x = (mvrnorm(n = n, mu = mu, Sigma))
+  return(x)
+}
+
+x = DrawRates(n = 10000, int = .05, int.sd = .07, inf = .03, inf.sd = .015, rho.rates = .5)
+
+plot(x[,1], x[,2], pch = 19, cex = .05, xlab = "Rate of return", ylab = "Rate of inflation")
+```
+
+What would this cloud look like if the rates were not correlated? Show an approximate plot of the marginal distribution of each random variable. It turns out this is the way we will do it with Markov chain Monte Carlo approximations of the marginal posterior distribution, which we will learn about later in the course. 
+
+```{r eval = TRUE, echo = key, include = key, fig.width = 8, fig.height = 4, fig.align = 'center'}
+par(mfrow= c(1, 2))
+hist(x[,1], xlab = "Interest Rate", main = "", freq = FALSE, breaks = 100)
+hist(x[,2], xlab = "Inflation Rate", main = "", freq = FALSE, breaks = 100)
+```
+
+<br>
+
+#### IX. Moment Matching
+
+When we say *support*, we are referring to the values of a random variable for which probability density or probability exceed 0 and are defined.  The support of  lognormal distribution is continuous and strictly non-negative, which makes it particularly useful in ecology and the social sciences.  Moreover, it is often useful because it is asymmetric, allowing for values that are extreme in the positive direction.  Finally, it is useful for representing products of random variables.  The central limit theorem would predict that the distribution of sums of random variables will be normal, no matter how each is individually distributed. The products of random variables will be lognormally distributed regardless of their individual distributions.
+
+If a random variable is lognormally distributed then the log of that random variable is normally distributed (conversely, if you exponentiate a normal random variable it generates a lognormal random variable). The first parameter of the lognormal distribution is the mean of the random variable on the log scale (i.e., $\alpha$ on cheat sheet, meanlog in R) and the second parameter is the variance (or sometimes the standard deviation) of the random variable on the log scale (i.e., $\beta$ on cheatsheet, sdlog in R). We often predict the median of the distribution with our deterministic model, which means that we can use the log of the median as the first parameter because
+
+\begin{eqnarray}
+z \sim  \textrm{lognormal}\big(\alpha,\beta\big)\\
+\textrm{median}\big(z\big) = e^{\alpha}\\
+\textrm{log}\big(\textrm{median}\big(z\big)\big) = \alpha
+\end{eqnarray}
+
+<br>
+
+1\. Simulate 10,000 data points from a normal distribution with mean 0 and standard deviation 1 and another 10,000 data points from a log normal distribution with first parameter (the mean of the random variable on the log scale) = 0 and second parameter (the standard deviation of the parameter on the log scale) = 1. Display side-by-side histograms scaled to the density. Find the mean and variance of the lognormal distribution using moment matching. Check your moment-matched values empirically with the simulated data. The moment-matched values and the empirical values are close for the mean, but less so for the variance.  Why?  What happens when you increase the number or draws? Explore the two distributions by repeating with different means and standard deviations of your choice.
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 10, fig.height = 5, fig.align = 'center'}
+par(mfrow = c(1,2))
+set.seed(1)
+mean.var <- 0
+sd.var <- 1
+n=100000
+
+log.y <- rnorm(n, mean = mean.var, sd = sd.var)
+hist(log.y, breaks = 50, prob = TRUE, main = "") 
+x  <- seq(-4, 4, .01)
+z <- dnorm(x, mean = mean.var, sd = sd.var)
+lines(x, z, col = "red", lwd = 2)
+
+y <- rlnorm(n, meanlog = mean.var, sdlog = sd.var)
+hist(y, ylim = c(0, .7), breaks = 250, prob = TRUE, xlim = c(0, 10), main = "") 
+x <- seq(0, 50, .01)
+z <- dlnorm(x, meanlog = mean.var, sdlog = sd.var)
+lines(x, z, col = "red", lwd = 2)
+```
+
+``` {r, eval = TRUE, echo = key, include = key}
+mean(log.y)
+var(log.y)
+(mean.y <- exp(mean.var + sd.var^2/2))
+(mean(y))
+(var.y <- (exp(sd.var^2) - 1) * exp(2 * mean.var + sd.var^2))
+(var(y))
+```
+
+2\. You assumed a normal distribution for the earlier above ground biomass problem (VII-5). Redo the problem with a more appropriate distribution.
+
+<div class="hider">
+<div class="boxBorder">
+$$y_i \sim \textrm{gamma}\Big(\cfrac{\mu^2}{\sigma^2},\cfrac{\mu}{\sigma^2}\Big)$$
+</div>
+<br>
+</div>
+
+``` {r, eval = TRUE, echo = key, include = key}
+x <- 94 
+mu <- 103
+sd <- 23
+shape <- mu**2/sd**2
+rate <- mu/sd**2
+dgamma(x, shape, rate)
+
+q <- c(110, 90)
+p.bound <- pgamma(q, shape, rate)
+p.bound[1] - p.bound[2]
+```
+
+3\. We are again interested in the proportion ($\phi$) of Maryland counties that contain a coal fired power plant. Existing literature shows that that this proportion has a mean of $\mu = 0.04$ with a standard deviation of $\sigma = 0.01$. Write out a model for the distribution of $\phi$, conditional on $\mu$ and $\sigma$. The challenge here is to use moment matching for a random variable with support between 0-1. Plot the probability distribution of $\phi$.  
+
+<div class="hider">
+<div class="boxBorder">
+$$
+\begin{align}
+\alpha &=\cfrac{\big(\mu^2 - \mu^3 - \mu\sigma^2\big)}{\sigma^2}\\
+\beta &=\cfrac{\big(\mu - 2\mu^2 + \mu^3 - \sigma^2 + \mu\sigma^2\big)}{\sigma^2}\\
+\phi &\sim \textrm{beta}\big(\alpha,\beta\big)
+\end{align}
+$$
+</div>
+<br>
+</div>
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 6, fig.height = 5, fig.align = 'center'}
+shapeit <- function(mu, sigma){
+  a <- (mu^2 - mu^3 - mu * sigma^2)/sigma^2
+  b <- (mu - 2 * mu^2 + mu^3 - sigma^2 + mu * sigma^2)/sigma^2
+  shape_ps <- c(a, b)
+  return(shape_ps)
+}
+
+betaParms <- shapeit(mu = .04, sigma = .01)
+x <- seq(0, .2, .001)
+y <- dbeta(x, betaParms[1], betaParms[2])
+
+plot(x, y,type = 'l', ylab = expression(paste("[",phi,"]")), xlab = expression(phi), 
+  xlim = c(0, 0.1), lwd = 2)
+```
+
+4.\ ADVANCED. You are modeling the relationship between plant growth rate and soil water. Represent plant growth ($\mu_i$) as a linear function of soil water, $\mu_i = \beta_{0} + \beta_{1}x_{i}$. Write out the model for the data. Simulate a data set of $20$, strictly non-negative pairs of$y$ and $x$ values. Plot the data and overlay the generating model. Assume that:
+
+- Soil water, the $x$ value, varies randomly and uniformly between $0.01$ and $0.2$ 
+- $\beta_0 = 0.01$ and $\beta_1 = 0.9$ and the standard deviation of the model prediction is $\sigma = 0.03$  
+
+<div class="hider">
+<div class="boxBorder">
+\begin{eqnarray}
+\mu_i &=& \beta_0 + \beta_1x_1\\
+\alpha_i &=& \cfrac{\mu_i^2}{\sigma^2}\\
+\beta_i &=& \cfrac{\mu_i}{\sigma^2}\\
+y_i &\sim& \textrm{gamma}\big(\alpha_i,\beta_i\big)\\
+\end{eqnarray}
+</div>
+<br>
+</div>
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 6, fig.height = 5, fig.align = 'center'}
+x <- runif(20, 0.01, 0.2)
+mu <- 0.01 + 0.9 * x
+sigma <- 0.03
+alpha <- mu^2/sigma^2
+beta <- mu/sigma^2
+y <- rgamma(length(x), alpha, beta)
+plot(x, y, xlab = "Soil Moisture", ylab = "Growth Rate", pch = 16, col = "red", cex = 1.5)
+lines(x, mu, lwd = 2)
+```
+
+5\. ADVANCED. The Poisson distribution is often used for count data, despite the fact that one must assume the mean and variance are equal. The negative binomial distribution is a more robust alternative, allowing the variance to differ from the mean. There are two parameterizations for the negative binomial. The first is more frequently used by ecologists: 
+
+$$
+\big[z\mid\lambda,r\big] = 
+\cfrac{\Gamma\big(z + r\big)}{\Gamma\big(r\big)z!}\Big(\cfrac{r}{r+\lambda}\Big)^r
+\Big(\cfrac{\lambda}{r+\lambda}\Big)^z\textrm{,}
+$$
+
+where $z$ is a discrete random variable, $\lambda$ is the mean of the distribution, and $r$ is the *dispersion parameter*. The variance of $z$ equals $\lambda + \cfrac{\lambda^{2}}{r}$.
+
+The second parameterization is more often implemented in coding environments (i.e. JAGS):
+
+$$
+\big[z \mid r,\phi \big] = \cfrac{\Gamma\big(z+r\big)}{\Gamma\big(r\big)z!}\phi^r\big(1-\phi\big)^z\textrm{,}
+$$
+
+where $z$ is the discrete random variable representing the number of failures that occur in a sequence of Bernoulli trials before $r$ successes are obtained. The parameter $\phi$ is the probability of success on a given trial. Note that $\phi=\cfrac{r}{\big(\lambda+r\big)}$.
+
+Simulate $100,000$ observations from a negative binomial distribution with mean of $\mu = 100$ and variance of $\sigma^2 = 400$ using the **first** parameterization that has a mean and a dispersion parameter (remember to moment match). Do the same simulation using the **second** parameterization. Plot side-by-side histograms of the simulated data.
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 10, fig.height = 5, fig.align = 'center'}
+n <- 100000
+lambda <- 100
+sigma2 <- 400
+r <- lambda^2/(sigma2 - lambda)
+z1 <- rnbinom(n, mu = lambda, size = r)
+mean(z1)
+var(z1)
+```
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 6, fig.height = 5, fig.align = 'center'}
+n <- 100000
+lambda <- 100
+sigma2 <- 400
+r <- lambda^2/(sigma2 - lambda)
+phi <- r/(r + lambda)
+z2 <- rnbinom(n, prob = phi ,size = r)
+mean(z2)
+var(z2)
+```
+
+``` {r, eval = TRUE, echo = key, include = key, fig.width = 8, fig.height = 5, fig.align = 'center'}
+par(mfrow = c(1, 2))
+hist(z1, col = "gray")
+hist(z2, col = "gray")
+```
+

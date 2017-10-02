@@ -1,0 +1,466 @@
+
+<style>
+
+/* uncomment out this to generate exercise */
+/* .hider {display: none;}  
+/* .hider2 {display: inline;} 
+
+/* uncomment out this to generate key */
+ .hider {display: inline;}  
+ .hider2 {display: none;}  
+
+</style>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Influence of source diversity on colonization success:
+##### A manipulative field experiment incorporating spatial-autocorrelation
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+<br>
+
+[I. Motivation][]
+
+[II. Problem][]
+
+[III. Preliminaries][]
+
+[IV. Calibration model][]
+
+[V. Hierarchical model][]
+
+[VI. References][]
+
+
+
+```{r preliminaries, include = FALSE, cache=TRUE}
+rm(list=ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE, messages = FALSE)
+
+# uncomment out this to generate key
+ nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+# nokey = TRUE; key = FALSE
+```
+
+<br>
+
+
+#### I. Motivation
+Many graduate students at CSU perform experiments assessing the importance of manipulations on a response of interest.  We often turn to ANOVAs or ANCOVAs o analyze the effects of these manipulated factors. However the Bayesian methods you have learned in this class can also be applied to these problems. We often need the Bayesian approach to account for errors in reponses, to deal with group level effects, and, as illustrated here, to deal with spatial autocorrelation. This lab provides illustrates the analysis of a designed experiment with a data model for an unobserved state and continuous spatial depdence in the data. 
+
+#### II. Problem
+A central goal in ecology is to understand the factors that promote colonization of founding populations (Mayr 1965, MacArthur & Wilson 1967). For over a decade, propagule pressure, or the number of individuals in a founding group, has been considered a null hypothesis for predicting colonization success (Lockwood et al. 2005, Simberloff 2009). However, there is accumulating evidence that intraspecific diversity within a founding group drives the positive relationship between propagule pressure and colonization success.     ?????? as diversity increases with increasing propagule pressure from a pure probability standpoint (Ahlroth et al. 2003, Lockwood et al. 2005, Elam et al. 2007). 
+
+We will analyze the importance of source diversity on the colonization success of *Bromus tectorum* (cheatgrass) founding populations in a common garden in Colorado. An experiment manipulated the number of geographically distinct sources represented in experimental populations of 32 cheatgrass seeds (5 levels of diversity: 1, 2, 4, 8, 16 sources represented; hereafter: **source diversity**). The objective of the experiment was to determine  if the strength of the diversity effect would vary if seeds were pre-adapted to the common garden. To do this, experimental plots were composed of seeds from Colorado or Nevada (hereafter: **source region**) across all diversity treatments;  Colorado representing the "pre-adapted" treatment and Nevada the "unadapted" one. 
+
+
+
+#### III. Preliminaries
+We need to compose two separate models to understand the effect of source diversity and source region on the colonization success of our experimental populations. The response variable of interest is the number of seeds produced, which will give us an idea of how many individuals could establish in the following generation. Unfortunately, we only have data on the total seed biomass because there were far too many seeds to count. Thus, the first model we need to construct is a **calibration model** explaining the relationship between seed count and seed weight. We will then use parameters from this model to inform priors in our Bayesian regression model assessing the importance of source region and diversity on colonization success (number of seeds produced per population). 
+
+You will need install the pacages `ade4` and `matrixStats`.
+
+#### IV. Calibration model
+
+To inform the calibration model, we counted and weighed seeds from a subset of experimental plots (see *calibration* dataset). 
+
+1. We have written out the likelihood for the relationship between seed count and seed weight, where seed weight is the response of interest. As seed weight can only be positive, it is lognormally distributed. We assume a linear relationship between seed weight and seed count with an intercept that crosses zero (*i.e.* there is no intercept parameter, just a slope).
+
+$$\text{log}(w_o) \sim \text{normal}(\text{log}(\alpha_c c_o), \sigma^2_c)$$
+
+2. We have also provided code for the simple calibration model. This will be helpful in developing the hierarchical regression model. Make sure you understand the different parts of the code.
+ 
+```{r}
+library(rjags)
+
+calib <- read.csv("/Users/Tom/Documents/EcologicalModelingCourse/_A_Master_Lab_Exercises/ContinuousSpatialProcesses/SeedCt_subset_model.csv")
+y_wt <- calib$wt
+x_ct <- calib$ct
+
+# because seed count is high, we model the relationship between weight and
+# hundreds of seeds
+
+data = list(
+  y_lnwt = log(y_wt),
+  x_ct = x_ct / 100,
+  n = length(calib$wt)) 
+
+
+  inits = list(
+  list(alpha = 0, tau = 0.01),
+  list(alpha = 1, tau = 0.5)
+  )
+
+```
+
+```{r}
+#### Calibration model
+{
+sink("calibration_model_jags.R")
+cat("
+model{
+  
+  ### priors 
+  tau ~ dgamma(0.001, 0.001)
+  alpha ~ dnorm(0, 1e-4)
+
+  # derived quantities
+  sd2 <- 1 / tau
+  
+  ### likelihood
+
+  # because we are taking the log of the product alpha*x_ct, we need to restrict values to be       
+  # positive. by looping through all values and choosing the maximum between a very small number positive   
+  # number and each alpha*x_c[i], we restrict all values to be non-zero and positive
+
+   for (i in 1:n){
+     mu[i] <- max(1e-10, x_ct[i] * alpha)
+   }
+  
+  # remember, y_lnwt is already log-transformed
+  for (i in 1:n){
+    y_lnwt[i] ~ dnorm(log(mu[i]), tau)
+  }
+  
+  
+  }# end model
+    
+",fill=TRUE)
+sink()
+}
+
+```
+
+```{r}
+n.adapt=2000
+n.update=5000
+n.iter= 5000
+
+jm.cal = jags.model(file="calibration_model_jags.R", data=data, n.adapt = n.adapt, inits=inits, n.chains=length(inits))
+
+
+```
+
+```{r, include=key, echo=key, eval=key}
+update(jm.cal, n.iter = n.update)
+zc.cal = coda.samples(jm.cal, variable.names = c("alpha", "tau", "sd2"), n.iter=n.iter)
+zj.cal = jags.samples(jm.cal, variable.names = c("alpha", "tau", "sd2"), n.iter=n.iter)
+
+plot(zc.cal, col = rgb(0, 0.5, 0.5, 0.6))
+summary(zc.cal)
+gelman.diag(zc.cal)
+```
+3. What is $\sigma^2_c$? Does this matter for understanding the relationship between seed weight and count? 
+
+4. In the hierarchical model below, we will parameterize $\alpha_c$ and $\tau_c$ using an *informed* gamma prior using values from this calibration experiment. Write an R function using the means and standard deviations of the marginal posterior distributions of $\alpha_c$ and $\tau_c$ found here, to calculate the shape and rate parameters of a gamma distribution. Save these as objects-- you will need them for the next model.
+
+```{r, include = key, echo = key, eval = key}
+
+# extract mean and sd of alpha
+mu_alpha <- mean(zj.cal$alpha) 
+sd_alpha <- sd(zj.cal$alpha) 
+
+mu_tau <- mean(zj.cal$tau) 
+sd_tau <- sd(zj.cal$tau) 
+
+# moment-matching for informed prior
+gamma<- function (mn, sd){
+  a = mn ^2 / sd^2
+  b= mn / sd^2
+  return(c(a, b))
+}
+
+gamma(mu_alpha, sd_alpha)
+# 2614.373 10054.346
+
+gamma(mu_tau, sd_tau)
+# 17.183387  0.211654
+```
+
+### V. Hierarchical model
+We are interested in how source diversity and source region influence the population-level production of cheatgrass seeds. The observed data, $y_i$, are the seed biomass of each experimental population. We want to understand how the number of seeds produced per population repsonds to the diversity treatment, and their interaction.
+
+We have the following design matrix. 
+1. Column one contains 1s.
+2. Column two contains diveristy of plot $i$ (1, 2, 4, 8, 16).
+3. Column three contains the region for plot $i$ (1 if Nevada and 0 otherwise)
+4  Column 4 is the product of diversity and region.
+
+The response, $y_i$ is the observed count in plot $i$ divided by 100, i.e. the units of $y$ are 100's of seeds. You may reasaonably treat "counts" as a continuous random variable beause the observations in each plot number in the 10,000s. Compose a deterministic model that includes an intercept and the effects of diversity, region, and thier interaction.
+
+Draw a DAG and write the posterior and joint distribution for the observed and unobserved quanitites. Your model will include:
+1. A data model relating the observed biomass to unobserved seed "counts".
+2. A process model that relates "counts," to the parameters in the deterministic model and the design matrix.  Assume that there is continuous spatial depdendence among the plots that must be modeled. 
+
+Megan--would you please add the answer for this?
+
+
+5. Write  the likelihood explaining the relationship between observed biomass and the latent variable, number of seeds. Use a distribution that makes sense for biomass measurements. Hint: this equation  should look really familiar!
+
+<div class="hider">
+\begin{align}
+\Sigma_{i,j} &= \sigma^2_p e^{(-D_{i,j}\phi)}\\
+[\phi,\sigma_p^2,\bm{\beta},\alpha,\sigma^2_c \mid \mathbf y] & \propto \prod_{i=1}^n[y_i\mid \alpha z_i,\sigma^2_c][\mathbf z\mid \mathbf X \bm \beta, \bm\Sigma][\bm \beta,\sigma^2_p,\sigma^2_c,\phi]\\
+\text{log}(y_i) & \sim \text{normal}(\text{log}(\alpha_c z_i), \sigma^2_c)\\
+\text{log}(\underline{z}) & \sim \text{multivariate normal}(\text{log}(\mathbf{X})\bm\beta, \Sigma)\\
+ &\text{with appropriate priors on parameters}
+\end{align}
+</div>
+
+6. We assume there is a linear relationship between covariates (source diversity, source region, and their interaction) and seed number, $z_i$, and that seed number is log-normally distributed. 
+
+???? counts?
+
+Write out an equation for the process model. Hint: To understand if there is an effect of source diversity, source region, and their interaction, we want to assess parameters $\beta_\text{diversity}$, $\beta_\text{region}$, and $\beta_\text{region*diversity}$ to see if they are different from zero (*i.e.*, no effect). We find that our observations are spatially-autocorrelated (*i.e.*, plots that are closer to eachother have similar biomass measurements). Thus, we will need to model the covariance in observations as ${\Sigma}$.
+
+<div class="hider">
+$$\text{log}(\underline{z}) \sim \text{multivariate normal}(\text{log}(\underline{u}), \Sigma)$$
+$$u_i = \beta_0 + \beta_\text{diversity}x_{1i} + \beta_\text{region}x_{2i} + \beta_\text{interaction}x_{3i}$$
+</div>
+
+7. Rather than accept that points are spatially autocorrelated, you should run a Mantel Test to illustrate that they actually are. To do this, first, create a distance matrix using the dist() function in R. The only argument you will need to provide is two joined columns of 'east' and 'north' from the main data set (these represent distances east and north from a corner of the common garden). Then create a second matrix using the observed seed biomass data, 'seeds'. Inspect the matrices using as.matrix(). Use the mantel.rtest() function in the *ade4* library (you will need to install and load this) to test for spatial autocorreltation. 
+
+What do these matrices represent? What is this test actually doing? Interpret your results.
+
+```{r, include = key, echo = key, eval = key}
+brte_sub <- read.csv("/Users/Tom/Documents/EcologicalModelingCourse/_A_Master_Lab_Exercises/ContinuousSpatialProcesses/brte_labdata1.csv")
+
+distance <- 0.75
+brte_sub$east <- brte_sub$row * distance
+brte_sub$north <- brte_sub$col * distance
+
+pop.dists <- dist(cbind(brte_sub$east, brte_sub$north))
+seeds.dists <- dist(brte_sub$seeds)
+
+as.matrix(pop.dists)[1:5,1:5]
+as.matrix(seeds.dists)[1:5,1:5]
+
+library(ade4)
+Mantel <- mantel.rtest(pop.dists, seeds.dists)
+```
+<div class="hider">
+The first matrix looks at the distance between plots in the common garden (differences in values of east and north), while the second matrix looks at the difference in values of seed biomass). The Mantel test tests if there is a significant correlation between distance between plots and differences in seed biomass measurements between plots. A p-value less than 0.05 rejects the null hypothesis that there is no relationship between the two matrices and the value r reported represents the correlation. Here, we can reject the null and suggest that there is spatial autocorrelation with a correlation of r = `r Mantel$obs`.
+</div>
+
+The covariance matrix in the process model will use the first distance matrix you created, $\mathbf{D}$, such that
+$$\Sigma_{i,j} = \sigma^2_p e^{(-D_{i,j}\phi)}$$
+
+Now let's put it all together. We have a likelihood relating the observed biomass data, $y_i$, to the latent variable of seed number (in hundreds of seeds), $z_i$, that is parameterized using information from the calibration experiment. Seed number can be explained by a regression model using covariates of source diversity, source region, and their interaction, where observations of seed number covary based on their location in the common garden.
+
+We will provide you will initial values to guide you in seting up the full model. 
+
+```{r}
+# create model matrix with div, loc, an interaction between div and loc, as covariates
+# this shows you the covariate values for each observation
+
+X.1 = model.matrix( ~ gen + loc + gen:loc, data=brte_sub)
+
+# Define data 
+lny = as.double(log(brte_sub$seeds))
+X = cbind(as.double(X.1[,1]), scale(as.double(X.1[,2])), 
+           scale(as.double(X.1[,3])), scale(as.double(X.1[,4])))
+D = as.matrix(pop.dists) # first distance matrix
+n = length(lny) # number of observations
+
+data = list(
+  y = lny,
+  X = X,
+  n = n, 
+  D = D,
+  p=dim(X)[2] # tells us how many betas there are
+)
+
+# Define initial conditions
+inits <- list(
+  list(beta = c(1, 1, 1, 1), tau.p = 0.1, phi = 1, alpha.c = 0.25, tau.c = 81),
+  list(beta = c(1.5, 1.5, 1.5, 1.5), tau.p = 1, phi = 2, alpha.c = 0.23, tau.c = 85)
+) 
+```
+
+8. Build and fit the hierarchical model to the experimental data in JAGS. We highly suggest using a small number of iterations as you are getting started with this model (it took 5 minutes to initialize, update, and make coda samples using n.adapt = 250, n.update = 500, n.iter = 1000). Once you get the model running with results that seem reasonable, then you can up your iterations. Some hints:
+  + You will need to use dmvnorm() for the distribution of $\underline{z}$. Rather than looping over *i* values of $z$, keep the mean and response as a vector. Much like dnorm(), the variance component needs to be in the form of precision. To do this, take the inverse of your covariance matrix using inverse(). 
+  + Create an object for the sum of your covariates multiplied by their respective $\beta$ 's. We can call this vector $u$ and can create it using matrix multiplication in R: $u = \mathbf{X}$ %*% $\boldsymbol{\beta}$.
+  + You might need to restrict values to be greater than zero before they pass through a log() argument. Use the trick in the calibration model above to do this.
+  + Keep $z$ log-transformed throughout the model. Remember than log(a*b) = log(a) + log(b). This should help in the likelihood.
+
+Include a posterior predictive check in your model.
+
+```{r, include = key, echo = key, eval = key}
+{
+sink("brte_model_jags.R")
+cat("
+ model{
+  ## priors
+  # vague priors
+  tau.p ~ dgamma(0.001, 0.001)
+  sigmasq.p <- 1 / tau.p
+  phi ~ dunif(1e-10, 5)
+  for(i in 1:p){
+     beta[i]~dnorm(0,0.0001)
+   }
+   
+  # informed priors
+   tau.c  ~ dgamma(17.1841127, 0.2118985)
+   alpha.c ~ dgamma(2505.777, 9639.005)
+  
+
+  ## create covariance matrix
+  # account for spatial autocorrelation using a covariance matrix specified by
+  # distance matrix (D), structured variance (sigma.p.str^2), and Matern variable (phi)
+   
+   for(i in 1:n){
+     for(j in 1:n){
+       Cov.mat[i,j]<-sigmasq.p^2*exp(-D[i,j]*phi)
+     }
+   }
+   
+  # invert covariance matrix to obtain precision matrix (use in multivariate normal)
+    Prec.mat <- inverse(Cov.mat)
+   
+  # mean number of seeds governed by beta priors and covariates
+    mu <- X%*%beta
+  
+  # restrict mu to be positive  
+   for (i in 1:n){
+     mu.pos[i]<- max(0.00000001, mu[i])
+   }
+   
+  # multivariate lognormal (all positive values of seed number) with precision matrix
+   lnz ~ dmnorm(log(mu.pos), Prec.mat)
+   
+  # likelihood (data conditioned on log(alpha.c*z[i]) which is the same as
+  # log(alpha.c) + log(z[i])
+    for (i in 1:n){
+      y[i] ~ dnorm(log(alpha.c) + lnz[i], tau.c)
+      y.new[i] ~ dnorm(log(alpha.c) + lnz[i], tau.c)
+      
+      # squared residuals for model fit
+      sq.y[i] <- (y[i] - (log(alpha.c) + lnz[i])) ^ 2
+      sq.ynew[i] <- (y.new[i] - (log(alpha.c) + lnz[i])) ^ 2
+    }
+      # posterior predictive check
+   
+      # sum of squared residuals (from above) for model fit
+      sumsq.y <- sum(sq.y[])
+      sumsq.ynew <- sum(sq.ynew[])
+      p.sumsq <- step(sumsq.ynew - sumsq.y)
+      
+ }
+",fill=TRUE)
+sink()
+}
+```
+```{r, include = key, echo = key, eval = key}
+
+n.adapt = 2500
+n.update = 500
+n.iter = 1000
+
+# initialize model with 2 chains
+jm.hier = jags.model(file="brte_model_jags.R", data=data, n.adapt = n.adapt, inits=inits, n.chains=length(inits))
+update(jm.hier, n.iter = n.update)
+zc.hier = coda.samples(jm.hier, variable.names = c("beta", "alpha.c", "tau.c", "tau.p", "phi", "p.sumsq"), n.iter=n.iter)
+zj.hier = jags.samples(jm.hier, variable.names = c("beta", "alpha.c", "tau.c", "tau.p", "phi", "p.sumsq"), n.iter=n.iter)
+
+# posterior predictive check
+mean(zj.hier$p.sumsq)
+
+```
+9. Plot the marginal posterior distributions for $\beta_0$, $\beta_\text{diversity}$, $\beta_\text{region}$, $\beta_\text{diversity*region}$, $\sigma^2_p$, $\sigma^2_c$, $\alpha^2_c$, and $\phi$. Overlay lines to show 95% credible intervals. Interpret your results: How do source diversity and region influence colonization success of *B. tectorum* founding populations?
+```{r, include = key, echo = key, eval = key}
+par(mar=c(4,4,2,2), mfrow=c(4,2))
+
+# beta_0
+plot(density(zj.hier$beta[1,,]), main = "", xlab=expression(beta[0]), cex.lab =1.3)
+abline(v=quantile(zj.hier$beta[1,,], c(0.025, 0.975)), col = "red", lty = "dashed")
+
+# beta_1 (diversity)
+plot(density(zj.hier$beta[2,,]), main = "", xlab=expression(beta["diversity"]), cex.lab =1.3)
+abline(v=quantile(zj.hier$beta[2,,], c(0.025, 0.975)), col = "red", lty = "dashed")
+
+# beta_2 (region)
+plot(density(zj.hier$beta[3,,]), main = "", xlab=expression(beta["region"]), cex.lab =1.3)
+abline(v=quantile(zj.hier$beta[3,,], c(0.025, 0.975)), col = "red", lty = "dashed")
+
+# beta_3 (interaction)
+plot(density(zj.hier$beta[4,,]), main = "", xlab=expression(beta["interaction"]), cex.lab =1.3)
+abline(v=quantile(zj.hier$beta[4,,], c(0.025, 0.975)), col = "red", lty = "dashed")
+
+# alpha_c 
+plot(density(zj.hier$alpha.c), main = "", xlab=expression(alpha[c]), cex.lab =1.3)
+abline(v=quantile(zj.hier$alpha.c, c(0.025, 0.975)), col = "red", lty = "dashed")
+
+# sigma^2_c 
+plot(density(1/zj.hier$tau.c), main = "", xlab=expression(sigma[c]^2), cex.lab =1.3)
+abline(v=quantile(1/zj.hier$tau.c, c(0.025, 0.975)), col = "red", lty = "dashed")
+
+# sigma^2_p 
+plot(density(1/zj.hier$tau.p), main = "", xlab=expression(sigma[p]^2), cex.lab =1.3)
+abline(v=quantile(1/zj.hier$tau.p, c(0.025, 0.975)), col = "red", lty = "dashed")
+
+# phi 
+plot(density(zj.hier$phi), main = "", xlab=expression(phi), cex.lab =1.3)
+abline(v=quantile(zj.hier$phi, c(0.025, 0.975)), col = "red", lty = "dashed")
+
+```
+<div class="hider">
+As diversity increases, colonization success (*i.e.* the number of seeds produced per plot) increases. Source region (CO vs. NV) does not influence colonization success. The positive effect of diversity does not differ depending on source region.
+</div>
+
+
+10. Make a graph with distance on the x-axis as covariance on the y-axis, using the exponential distance equation for which we used to create the covariance matrix. Plot the mean with 95% credible intervals. What does this tell you about the spatial autocorrelation if plots were 0.75m apart in the common garden?
+```{r, include = key, echo = key, eval = key}
+distance <- seq(0, 20, 0.5)
+covar <- function(phi, d){
+  cov <- exp(-d * phi)
+  return(cov)
+}
+
+y <- matrix(nrow = length(zj.hier$phi), ncol = length(distance))
+
+for (i in 1:length(zj.hier$phi)){
+  y[i,] <- covar(phi = zj.hier$phi[i], d = distance)
+}
+
+par(mfrow=c(1,1))
+plot(distance, colMeans(y), type = "l", ylab = "covariance")
+library(matrixStats)
+ci <- colQuantiles(y, probs = c(0.025, 0.975))
+lines(distance, ci[,1], col = "red", lty = "dashed")
+lines(distance, ci[,2], col = "red", lty = "dashed")
+
+```
+
+<div class="hider">
+Plots that are less than 10 meters apart covary at least somewhat. Plots that are within ~4 meters of eachother covary considerably.
+</div>
+
+
+### VI. References
+
+Ahlroth P, Alatalo RV, Holopainen A, Kumpulainen T, Suhonen J (2003) Founder population size and number of source populations enhance colonization success in waterstriders. *Oecologia* 137:617-620.
+
+Elam DR, Ridley CE, Goodell K, Ellstrandt NC (2007) Population size and relatedness affect fitness of a self-incompatible invasive plant. *P Natl Acad Sci USA* 104:549-552.
+
+MacArthur RH, Wilson EO (1967) The theory of island biogeography. Princeton University Press, Princeton, NJ.
+
+Mayr E (1965) The nature of colonization in birds. Pages 29-47 in HG Baker and GL Stebbins, editors. The genetics of colonizing species. Academic Press, New York.
+
+Lockwood JL, Cassey P, Blackburn T (2005) The role of propagule pressure in explaining species invasions. *Trends Ecol Evol* 20:223-228.
+
+Simberloff D (2009) The role of propagule pressure in biological invasions. *Annu Rev Ecol Syst* 40:81-102.
+
+
+

@@ -1,0 +1,44 @@
+model{
+
+####
+#### Gaussian data model with mean=mu and Precision matrix = Prec.mat
+####
+
+y[1:n]~dmnorm(mu,Prec.mat)
+
+mu<-X%*%beta
+
+Prec.mat <- inverse(Cov.mat)
+
+####
+#### defining the exponential covariance matrix
+####
+
+for(i in 1:n){
+      for(j in 1:n){
+      	    Cov.mat[i,j]<-sigma.sq*exp(-D[i,j]*phi)
+      }
+}
+
+####
+#### Inverse-Gamma prior on sigma-squared
+####
+
+sigma.sq<-1/tau
+tau~dgamma(2,5)
+
+####
+#### Uniform prior on phi
+####
+
+phi~dunif(3/max.prior.range,3/min.prior.range)
+
+####
+#### Exchangeable vague Gaussian priors on each beta[i]
+####
+ 
+for(i in 1:p){
+      beta[i]~dnorm(0,0.000001)
+}
+
+}

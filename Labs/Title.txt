@@ -1,1 +1,1 @@
-Bayesian Modeling
+Bayesian models for ecological data

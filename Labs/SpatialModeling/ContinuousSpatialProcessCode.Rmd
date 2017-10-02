@@ -1,0 +1,245 @@
+
+rm(list=ls())
+
+
+library(geoR)
+library(maps)
+library(mvtnorm)
+library(rjags)
+library(spBayes)
+library(rgdal)
+library(maptools)
+gpclibPermit()
+
+par(mfrow=c(1,1))
+ut.st=map("state",regions="utah",fill=T,plot=F)
+ut.coords=cbind(ut.st$x,ut.st$y)
+plot(ut.coords,type="b")
+ut.coords=rbind(ut.coords,ut.coords[1,])
+ut.latlon=SpatialPoints(ut.coords,proj4string=CRS("+proj=longlat +datum=WGS84"))
+str(ut.latlon)
+ut.utm=spTransform(ut.latlon,CRS("+proj=utm +zone=12  +datum=WGS84"))
+plot(ut.utm)
+
+ut.range=ut.utm@bbox
+xg=seq(ut.range[1],ut.range[3],,25)
+yg=seq(ut.range[2],ut.range[4],,35)
+utgrid.locs=as.matrix(expand.grid(xg,yg))
+plot(utgrid.locs,pch=20,asp=1,xlab="x.utms",ylab="y.utms")
+points(ut.utm@coords,type="l",lwd=3)
+ntot=dim(utgrid.locs)[1]
+
+#Make some spatially structured, standarized covariates and add them to the grid. 
+X2=-cos(scale(utgrid.locs[,1])-.5)*cos(scale(utgrid.locs[,2]))
+X3=scale(utgrid.locs[,1])+scale(utgrid.locs[,2])
+#put the covariates together with the utms
+dat = cbind(utgrid.locs,X2,X3)
+colnames(dat) = c("easting", "northing", "X2", "X3")
+
+#Make an unstructured response variable
+p=3
+#make a matrix of 1's with ntot rows and 3 columns
+X=matrix(1,ntot,p)
+#replace the 1's in colums 2 and 3 with the covariates. Column 1 retains the ones to represent the intercept
+X[,2]=dat[,3]
+X[,3]=dat[,4]
+#set some coefficients
+beta=c(1,-2,1) #beta_0 = 1, beta_1 = -2, beta_2 = 1
+sigma = .5
+#Simulate a vector of responses using a normal distribution.This is the same as making ntot draws from rnorm where ntot is the total number of points in the grid and X%**beta is a vector of means. 
+y=rnorm(ntot,X%*%beta,sigma)
+dat = as.data.frame(cbind(y,dat))
+
+par(mfrow=c(2,2))
+image(matrix(dat$y,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="y",asp=TRUE, xlab="Easting", ylab="Northing")
+
+image(matrix(dat$X2,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="x2",asp=TRUE,xlab="Easting", ylab="Northing")
+#ImagePlot(matrix(dat$X2,length(xg),length(yg)))
+image(matrix(dat$X3,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="x3",asp=TRUE,xlab="Easting", ylab="Northing")
+image(matrix(rnorm(ntot,mean=1.57,sd=1.82),length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="unstructured y",asp=TRUE,xlab="Easting", ylab="Northing")
+
+#Adjust these values to change computation time 
+
+#To start use these
+n.adapt=500
+n.update=1000
+n.iter=1000
+#subset the data
+idxkeep=sort(sample(1:ntot,round(0.2*ntot)))
+
+# #When everything is running use these
+idxkeep=sort(sample(1:ntot,round(0.8*ntot)))
+<!-- n.adapt=500 -->
+<!-- n.update=1000 -->
+<!-- n.iter=1000 -->
+
+#When you can run your code overnight, use these
+# idxkeep = seq(1:ntot)
+# n.adapt=500
+# n.update=15000
+# n.iter=5000
+
+p=length(beta)
+inits=list(
+  list(
+  beta=rep(1,p),
+  sigma=.2
+  )
+)
+
+
+data = list(
+  y=as.double(dat$y[idxkeep]),
+  X = X[idxkeep,],
+  y.p = p,
+  y.I = diag(length(idxkeep))
+)
+
+
+
+
+#fit aspatial model
+sink("AspatialJAGS.R")
+cat("
+    model{
+    for(i in 1:y.p){
+      beta[i] ~ dnorm(0,.00001)
+    }
+    sigma ~ dunif(0,.5)
+    mu = X %*% beta
+    prec.mat = inverse(sigma^2*y.I) #y.I = identity matrix
+    y ~ dmnorm(mu,prec.mat)
+    epsilon = y - mu
+}
+    ",fill=TRUE)
+sink()
+
+
+#start with small number of interations to get model running.
+
+jm_a=jags.model("AspatialJAGS.R", n.adapt = n.adapt, n.chains = 1, inits=inits, data=data)
+#zc_a = coda.samples(jm_a, variable.names=c("beta","sigma"), n.iter=1000)
+update(jm_a, n.iter=n.update)
+#Be careful.  It may appear that model is stuck because the *** freeze.  Be patient.
+zj_a =jags.samples(jm_a,variable.names=c("beta","sigma","epsilon"), n.iter=n.iter)
+summary(zj_a$beta,quantile,c(.025,.5,.975))
+summary(zj_a$sigma, quantile,c(.025,.5,.975))
+epsilon = summary(zj_a$epsilon,median,na.rm=TRUE)$stat
+n=length(idxkeep)
+image(matrix(epsilon,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)))
+#compute distance matrix
+D=as.matrix(dist(utgrid.locs))
+utgrid.sm.locs=utgrid.locs[idxkeep,]
+epsilon.gd=as.geodata(cbind(utgrid.sm.locs,epsilon))
+epsilon.v=variog(epsilon.gd,max.dist=max(D))
+plot(epsilon.v)
+#no spatial strcuture in the residuals
+
+D=as.matrix(dist(utgrid.locs))
+s2=2
+phi=1.5*10^-5
+Sigma=s2*exp(-D*phi)
+
+plot(seq(0,max(D),,20),s2*exp(-seq(0,max(D),,20)*phi),type="o",ylab="cov",xlab="distance")
+
+set.seed(13)
+#get a vector of epsilons. rmvnorm returns  a single  vector of length n.tot centered on 0. Sigma is cacluated above to reflect spatial autocorelation.
+eps=as.vector(rmvnorm(1,matrix(0,ntot,1),Sigma,method="chol"))     # may take some time
+
+#Create spatailly structured data by adding 0 centered, spatially structured random variables to the unstructured y.
+dat$y_structured = dat$y+eps
+image(matrix(eps,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)), main=expression(epsilon))
+dat$y_structured = dat$y+eps
+image(matrix(dat$y_structured,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="Structured y")
+
+#refit aspatial model with structured data
+data = list(
+  y=as.double(dat$y_structured[idxkeep]),
+  X = X[idxkeep,],
+  y.p = p,
+  y.I = diag(length(idxkeep))
+)
+jm_a2=jags.model("AspatialJAGS.R", n.adapt = n.adapt, n.chains = 1, inits=inits, data=data)
+#zc_a = coda.samples(jm_a, variable.names=c("beta","sigma"), n.iter=1000)
+
+update(jm_a2,n.iter=n.update)
+
+zj_a2 =jags.samples(jm_a2,variable.names=c("beta", "epsilon", "sigma"), n.iter=n.iter)
+par(mfrow=c(2,2))
+eps=summary(zj_a2$epsilon,median)$stat
+ image(matrix(eps,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="Structured y")
+epsilon = summary(zj_a2$epsilon,median)$stat
+n=length(idxkeep)
+utgrid.sm.locs=utgrid.locs[idxkeep,]
+epsilon.gd=as.geodata(cbind(utgrid.sm.locs,epsilon))
+epsilon.v=variog(epsilon.gd,max.dist=max(D/4))
+plot(epsilon.v)
+legend(75000,1,c("Fit", "Generating"),pch=c(1,19), bty="n", cex=.75)
+lines(epsilon.v$uvec,s2-s2*exp(-epsilon.v$uvec*phi),type="o",pch=20)
+
+summary(zj_a2$beta,quantile,c(.025,.5,.975))
+summary(zj_a2$sigma,quantile, c(.025,.5,.975))
+
+inits=list(
+  list(
+    beta=rep(1,p),
+    sigma=.2,
+    phi = 2*10^-5,
+    tau = .5 
+  )
+)
+D.sm = D[idxkeep,idxkeep]
+data = list(
+  y=as.double(dat$y_structured[idxkeep]),
+  X = X[idxkeep,],
+  y.p = p,
+  y.I = diag(length(idxkeep)),
+  D = D.sm,
+  y.min.prior.range=max(D.sm)/500,
+  y.max.prior.range=max(D.sm)
+)
+
+
+##Fit model accounting for spatial depdnence
+sink("SpatialJAGS.R")
+cat("
+    model{
+    for(i in 1:y.p){
+    beta[i] ~ dnorm(0,.00001)
+    }
+    sigma ~ dunif(0,.5)  #unstructured error
+    #tau ~ dgamma(2,5)
+    tau ~ dgamma(.01,.10)
+    sigma_sq_struc <- 1 / tau 
+    phi ~ dunif(3/y.max.prior.range, 3/y.min.prior.range)
+    mu = X %*% beta
+    #Define exponential variance covariance matrix
+    for(i in 1:length(y)){
+       for(j in 1:length(y)){
+        Cov.mat[i,j] <- sigma_sq_struc * exp(-D[i,j] * phi)
+      }
+    }
+    prec.mat = inverse(Cov.mat + sigma^2*y.I)
+    y[] ~ dmnorm(mu[],prec.mat) 
+    epsilon = y - mu
+    }
+    ",fill=TRUE)
+sink()
+
+
+jm_s=jags.model("SpatialJAGS.R", n.adapt = n.adapt, n.chains = 1, inits=inits, data=data)
+update(jm_s, n.iter=n.update)
+#zc_s = coda.samples(jm_s, variable.names=c("beta","sigma","phi"), n.iter=n.iter)
+
+zj_s =jags.samples(jm_s,variable.names=c("epsilon","beta","sigma","phi"," sigma_sq_struc"), n.iter=n.iter)
+epsilon_s = summary(zj_s$epsilon,mean)$stat
+image(matrix(epsilon_s,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="y",asp=TRUE, xlab="Easting", ylab="Northing")
+
+n=length(idxkeep)
+utgrid.sm.locs=utgrid.locs[idxkeep,]
+epsilon.gd=as.geodata(cbind(utgrid.sm.locs,epsilon_s))
+epsilon.v=variog(epsilon.gd,max.dist=max(D))
+plot(epsilon.v)
+
+
+

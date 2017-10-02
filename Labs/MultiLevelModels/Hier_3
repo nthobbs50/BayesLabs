@@ -1,0 +1,35 @@
+
+    model{
+    #priors for within site model######
+    sigma ~ dunif(0,200)
+    tau.reg <- 1/sigma^2
+    
+    #priors for intercept model#######
+    kappa ~ dnorm(0,.00001)
+    eta ~ dnorm(0, .000001)
+    sigma.alpha ~ dunif(0,200)
+    tau.alpha <- 1/sigma.alpha^2
+    #hyper priors for slope model
+    mu.beta ~ dnorm(0,.00001)
+    sigma.beta ~ dunif(0,200)
+    tau.beta <- 1/sigma.beta
+  
+
+    #likelihood for data, note that data are on log scale in data statement on R side.  
+    for(i in 1:length(y.emission)){
+      log_mu[i] <- alpha[y.group[i]] + beta[y.fert[i]] * y.n.input[i]
+      y.emission[i] ~ dnorm(log_mu[i], tau.reg)
+    }
+    # carbon model for intercept
+  for(j in 1:y.n.sites){
+     #use normal because data are centered
+      mu.alpha[j] <- kappa + eta *w[j]
+      alpha[j] ~ dnorm(mu.alpha[j],tau.alpha)
+  }
+  #Allow slope to vary by fertilizer type
+  for(k in 1:y.n.fert){
+    beta[k] ~ dnorm(mu.beta, tau.beta)
+  }
+ } #end of model
+    
+    

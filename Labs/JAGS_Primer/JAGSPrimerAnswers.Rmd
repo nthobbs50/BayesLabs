@@ -2,7 +2,7 @@
 output: html_document
 ---
 
-<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:150px;height=150px" />
 
 ### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
 #### JAGS Primer Answers
@@ -84,7 +84,7 @@ A recurring theme in this course will be to use priors that are informative when
 
 In the absence of some sort of scholarly way to find priors, we can at least constrain them somewhat. There is no way that a large mammal can have an intrinsic rate of increase exceeding 1 -- many values for $r$ within gamma(.001, .001) are far large than than that and hence are complete nonsense. We know $r$ must be positive and we can put a plausible bound on its upper limit. The only requirement for a vague prior is that its "$\ldots$ range of uncertainty should be clearly wider that the range of reasonable values of the parameter$\ldots$" (Gelman and Hill, 2009, page 355), so we could use $r$ ~ uniform(0, 2) and be sure that it would be minimally informative. Similarly, we could use experience and knowledge to put some reasonable bounds on $K$ and even $\sigma$, which we can use to calculate $\tau$ as $\tau=\frac{1}{\sigma^{2}}$. 
 
-Peters. *The ecological implications of body size*. Cambridge University Press, Cambridge, United Kingdom, 1983.
+R. H. Peters. *The ecological implications of body size*. Cambridge University Press, Cambridge, United Kingdom, 1983.
 
 C. J. Pennycuick. *Newton rules biology*. Oxford University Press, Oxford United Kingdom, 1992.
 
@@ -148,7 +148,8 @@ Then we run the remaining commands discussed in the JAGS Primer. Note that ``jm`
 ``` {r, eval = TRUE, include = TRUE, echo = TRUE}
 rm(list = ls())
 
-library(ESS575)
+library(SESYNCBayes)
+library(parallel)
 library(rjags)
 set.seed(1)
 
@@ -180,44 +181,48 @@ summary(zm)
 
 Append R code (algorithm 5) to the script you made in exercise 4 to run the JAGS model (algorithm 2) in parallel and estimate the parameters, $r$, $K$ $\sigma$, and $\tau$. Use the ``proc.time`` function in R to compare the time required for the sequential and parallel JAGS run. If your computer has 3 cores, try running only 2 chains in parallel when doing this exercise. If you have fewer than 3 cores, work with a classmate that has at least 3 cores.
 
-We create a function called ``initFunc`` to randomly draw values from a portion of each parameter's support. We will use this function to provide initial values for each chain. We test out ``initFunc`` by running it a couple of times.
-
-``` {r, eval = TRUE, include = TRUE, echo = TRUE}
-initFunc <- function (){
-return(list(
-  K = runif(1, 10, 4000),
-  r = runif(1, .01, 2),
-  sigma = runif(1, 0, 2)))}
-
-initFunc()
-initFunc()
-```
-
-Now we run the model in parallel using the code from algorithm 5. We use the ``proc.time`` function to see how long JAGS takes to run the Logistics model in parallel.
+We run the model in parallel using the code from algorithm 5. We use the ``proc.time`` function to see how long JAGS takes to run the Logistics model in parallel.
 
 ``` {r, eval = TRUE, include = TRUE, echo = TRUE}
 # run JAGS model in parallel
-library(parallel)
-detectCores()
+cl <- makeCluster(3)
+pidList <- NA
+for(i in 1:3){
+  pidNum <- capture.output(cl[[i]])
+  start <- regexpr("pid", pidNum)[[1]]
+  end <- nchar(pidNum)
+  pidList[i] <- substr(pidNum, (start + 4), end)}
 
-cl <- makeCluster(3) # Here we use three cores
-clusterExport(cl, c("data", "initFunc", "n.adapt", "n.update", "n.iter")) 
+initsP = list(
+  list(K = 1500, r = .2, sigma = 1,
+          .RNG.name = "base::Mersenne-Twister", .RNG.seed = 1),
+  list(K = 1000, r = .15, sigma = .1,
+          .RNG.name = "base::Mersenne-Twister", .RNG.seed = 22),
+  list(K = 900, r = .3, sigma = .01,
+          .RNG.name = "base::Mersenne-Twister", .RNG.seed = 373))
+
+parallel::clusterExport(cl, c("pidList", "data", "initsP",
+        "n.adapt", "n.update", "n.iter"))
 
 ptm <- proc.time()
+
 out <- clusterEvalQ(cl, {
   library(rjags)
-  set.seed(1)
-  jm = jags.model("LogisticJAGS.R", data = data, inits = initFunc(), 
+  processNum <- which(pidList==Sys.getpid())
+  worker_inits <- initsP[[processNum]]
+  jm = jags.model("LogisticJAGS.R", data = data, inits = worker_inits,
   n.chains = 1, n.adapt = n.adapt)
   update(jm, n.iter = n.update)
-  zmCore = coda.samples(jm, variable.names = c("K", "r", "sigma", "tau"), 
+  zmCore = coda.samples(jm, variable.names = c("K", "r", "sigma", "tau"),
   n.iter = n.iter, thin = 1)
   return(as.mcmc(zmCore))
 })
+
+stopCluster(cl)
+
 ParallelTime <- proc.time() - ptm
 ParallelTime
 
-stopCluster(cl)
 zmP <- mcmc.list(out)
 ```
 

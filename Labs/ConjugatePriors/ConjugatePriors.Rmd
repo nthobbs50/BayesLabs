@@ -1,0 +1,254 @@
+<style>
+
+/* uncomment out this to generate exercise */
+#.hider {display: none;} */
+
+/* uncomment out this to generate key */
+.hider {display: inline;}
+
+</style>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:150px;height=150px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Using Conjugate Priors Lab
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+[I. Motivation][]
+
+[II. Scenarios][]
+
+[1. Climate Referendum Voting (small sample)][]
+
+[2. Climate Referendum Voting (larger sample)][]
+
+[3. Lobster catch][]
+
+[4. Solstice temperature][]
+
+```{r preliminaries, include = FALSE}
+rm(list=ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE, messages = FALSE)
+
+# uncomment out this to generate key
+nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+#nokey = TRUE; key = FALSE
+```
+
+<br>
+
+#### I. Motivation
+
+Conjugate relationship between likelihoods and priors are important in MCMC and offer a handy way to find values for the parameters of posterior distributions in closed form, on the back of a cocktail napkin. Here we practice that important bar skill.  Go over your notes on conjugate priors before diving in to this problem set.
+
+a. Identify appropriate conjugate distributions and write out full posteriors for the quantity you are modeling.
+b. Plot the posterior and the prior distributions for the modeled quantity and interpret.
+c. Using the posterior distribution, determine the 95% credible interval for the parameter in each scenario.
+d. Comment on the informative nature of the prior in terms of its relationship to the posterior.
+
+Data are found in the class data library, ESS575.
+
+<br>
+
+#### II. Scenarios
+
+##### 1. Climate Referendum Voting (small sample)
+
+You are conducting a political opinion poll and poll a small number of voters at random, $n=10$. You ask each voter whether he or she will vote "yes" in an upcoming referendum on funding for local climate adaptation. Seven voters say they intend to vote "no"" and 3 report intending to vote "yes". Little is known about how people might vote.  Assuming a vague prior on the probability that a person votes "yes", answer questions a-d. In addition:
+
+* Estimate the probability that the referendum passes as $\textrm{Pr}\big(\phi \geq .5\big)$. 
+
+<div class="hider">
+\begin{eqnarray}
+\big[\phi \mid y, n\big] & \propto & 
+\textrm{binomial}\big(y\mid\phi,n\big)\,\textrm{beta}\big(\phi\mid \alpha_{prior},\beta_{prior}\big)\\[1em]
+& \propto & \phi^y \big(1-\phi\big)^{n-y}\phi^{\alpha_{prior}-1}\big(1-\phi\big)^{\beta_{prior}-1}\\[1em]
+& \propto & \phi^{\alpha_{prior}+y-1}\big(1-\phi\big)^{\beta_{prior}+n-y-1}\\[1em]
+& = & \frac{\Gamma\big(\alpha_{prior}+y+\beta_{prior}+n-y\big)}{\Gamma\big(\alpha_{prior}+y\big)\Gamma\big(\beta_{prior}+n-y\big)}
+\phi^{\alpha_{prior}+y-1}\big(1-\phi\big)^{\beta_{prior}+n-y-1}\\[1em]
+& = & \textrm{beta}\big(\alpha_{prior}+y,\beta_{prior}+n-y\big)\\[1em]
+& = & \textrm{beta}\big(1+3,1+10-3\big)\\[1em]
+& = & \textrm{beta}\big(4,8\big)
+\end{eqnarray}
+</div>
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key, message = FALSE}
+aPrior <- 1
+bPrior <- 1 
+y <- 3
+n <- 10
+(aPost <- aPrior + y)
+(bPost <- bPrior + n - y)
+
+prior <- function(x) dbeta(x, aPrior, bPrior)
+post <- function(x) dbeta(x, aPost, bPost)
+
+plot(prior, 0, 1, ylim=c(0, 3), main = "Beta prior (dash) and  beta posterior (red)", xlab = expression(phi), ylab = "Density",
+  lty = 2, lwd = 2)
+plot(post, 0, 1, add = TRUE, col = "red", lwd = 2)
+```
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key, message = FALSE}
+bounds <- c(0.025, 0.975)
+bounds95 <- qbeta(bounds, aPost, bPost)
+bounds95
+```
+
+```{r echo = key, include = key, message = FALSE}
+1 - pbeta(.5, aPost, bPost)
+```
+
+<br>
+
+##### 2. Climate Referendum Voting (Larger Sample)
+
+You are conducting a political opinion poll and have data from 100 voters at random. Each voter whether they will vote "yes" in an upcoming referendum on funding for local climate adaptation. Little is known about how people might vote.  Estimate the probability that the referendum passes. The poll results are stored in the data frame ``ClimateVote``. Using your posterior distribution from the previous scenario as the prior, answer questions A-D. In addition:
+
+* Estimate the probability that the referendum passes as $\textrm{Pr}\big(\phi \geq .5\big)$. 
+* Instead of using the binomial-beta conjugate for this problem, try a Bernoulli-beta. 
+* Try using a vague prior for $\phi$. Does your posterior distribution change much? Why or why not?
+
+<div class="hider">
+\begin{eqnarray}
+\big[\phi \mid y, n\big] & \propto & 
+\prod_{i=1}^{100}\textrm{Bernoulli}\big(z_{i}\mid\phi)\,\textrm{beta}\big(\phi\mid \alpha_{prior},\beta_{prior}\big)\\[1em]
+& \propto & \prod_{i=1}^{100}\phi^{z_{i}}\big(1-\phi\big)^{1-z_{i}}\phi^{\alpha_{prior}-1}\big(1-\phi\big)^{\beta_{prior}-1}\\[1em]
+& \propto & \phi^{\alpha_{prior}-1+\sum_{i=1}^{100}z_{i}}\big(1-\phi\big)^{\beta_{prior}-1+\sum_{i=1}^{100}(1 - z_{i})}\\[1em]
+& \propto & \phi^{\alpha_{prior}+y-1}\big(1-\phi\big)^{\beta_{prior}+100-y-1}\\[1em]
+& = & \frac{\Gamma\big(\alpha_{prior}+y+\beta_{prior}+100-y\big)}{\Gamma\big(\alpha_{prior}+y\big)\Gamma\big(\beta_{prior}+100-y\big)}
+\phi^{\alpha_{prior}+y-1}\big(1-\phi\big)^{\beta_{prior}+100-y-1}\\[1em]
+& = & \textrm{beta}\big(\alpha_{prior}+y,\beta_{prior}+100-y\big)\\[1em]
+& = & \textrm{beta}\big(4+38,8+100-38\big)\\[1em]
+& = & \textrm{beta}\big(42,70\big)\\[1em]
+&& \textrm{where}\quad y = \sum_{i=1}^{100}z_{i}
+\end{eqnarray}
+</div>
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key, message = FALSE}
+library(ESS575)
+aPrior <- 4
+bPrior <- 8 
+(y <- sum(ClimateVote$vote))
+(n <- dim(ClimateVote)[1])
+(aPost <- aPrior + y) 
+(bPost <- bPrior + n - y)
+
+prior <- function(x) dbeta(x, aPrior, bPrior)
+post <- function(x) dbeta(x, aPost, bPost)
+postFlat <- function(x) dbeta(x, 1 + y, 1 + n - y)
+
+plot(prior, 0, 1, ylim=c(0, 10), main = "Beta prior (dash) and beta posterior (red, blue)", xlab = expression(phi), ylab = "Density", lty = 2, lwd = 2)
+plot(post, 0, 1, add = TRUE, col = "red", lwd = 2)
+plot(postFlat, 0, 1, add = TRUE, col = "blue", lwd = 2)
+```
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key, message = FALSE}
+bounds <- c(0.025, 0.975)
+bounds95 <- qbeta(bounds, aPost, bPost)
+bounds95
+```
+
+```{r echo = key, include = key, message = FALSE}
+1 - pbeta(.5, aPost, bPost)
+```
+
+<br>
+
+##### 3. Lobster Catch
+
+A group of fishermen go lobster fishing for an hour. The fishermen catch 15, 8, 6, 11, and 4 lobster. Estimate average catch, given that, prior to this fishing trip, we believed fishermen catch an average of 3 lobsters per hour $(\mu=3)$ an hour with a standard deviation of 1.5 lobsters per hour $(\sigma=1.5)$.
+
+<div class="hider">
+First use moment-matching to convert $\mu$ and $\sigma$ to $a_{prior}$ and $b_{prior}$.
+</div>
+
+```{r echo = key, include = key, message = FALSE}
+mu <- 3
+sigma <- 1.5
+
+(aPrior <- mu^2/sigma^2)
+(bPrior <- mu/sigma^2)
+```
+
+<div class="hider">
+\begin{eqnarray}
+\big[\lambda \mid y\big] & \propto & 
+\prod_{i=1}^{n}\textrm{Poisson}\big(y_{i}\mid\lambda\big)\,\textrm{gamma}\big(\lambda\mid\alpha_{prior},\beta_{prior}\big)\\[1em]
+& = & \prod_{i=1}^{n}\lambda^{y_{i}}e^{-\lambda}\lambda^{\alpha_{prior}-1}e^{-\beta_{prior}\lambda}\\[1em]
+& = & \lambda^{\alpha_{prior}-1 + \sum_{i=1}^{n}y_{i}}e^{-\beta_{prior}\lambda-n\lambda}\\[1em]
+& = & \lambda^{\alpha_{prior}-1 + \sum_{i=1}^{n}y_{i}}e^{-(n + \beta_{prior})\lambda}\\[1em]
+& = & \textrm{gamma}\big(\alpha_{prior} + \sum_{i=1}^{n}y_{i}, n + \beta_{prior}\big)\\[1em] 
+& = & \textrm{gamma}\big(4 + 44, 5 + 1.333\big)\\[1em] 
+& = & \textrm{gamma}\big(48, 6.333\big) 
+\end{eqnarray}
+</div>
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key, message = FALSE}
+y <- c(15, 8, 6, 11, 4 )
+(aPost <- aPrior + sum(y))
+(bPost <- bPrior + length(y))
+
+prior <- function(x) dgamma(x, aPrior, bPrior)
+post <- function(x) dgamma(x, aPost, bPost)
+
+plot(prior, 0, 20, main = "Gamma prior (dash) and gamma posterior (red)", xlab = expression(lambda), ylab = "Density", lty = 2, lwd = 2, ylim = c(0, 0.4))
+plot(post, 0, 20, add = TRUE, col = "red", lwd = 2)
+```
+
+```{r echo = key, include = key, message = FALSE}
+bounds <- c(0.025, 0.975)
+bounds95 <- qgamma(bounds, aPost, bPost)
+bounds95
+```
+
+<br>
+
+##### 4. Solstice temperature
+
+You have collected temperature data on the December solstice for the last 50 years in Maryland.  The *known* standard deviation for these measurements is 15 ($\sigma=15$).  In a previous study researchers found mean temperature to be 30 $(\mu_{prior}=30)$ with a standard deviation of 12 $(\sigma_{prior}=12)$. The solstice temperature measurements are stored in the data frame ``SolsticeTemp``.
+
+<div class="hider">
+\begin{eqnarray}
+\big[\mu \mid y\big] & \propto & 
+\prod_{i=1}^{n}\textrm{normal}\big(y_{i}\mid\mu, \sigma^{2}\big)\,\textrm{normal}\big(\mu\mid\mu_{prior},\sigma_{prior}^{2}\big)\\[1em]
+& = & \textrm{normal}\Bigg(\cfrac{\bigg(\cfrac{\mu_{prior}}{\sigma_{prior}^{2}} +\cfrac{\sum_{i=1}^{n}y_{i}}{\sigma^{2}}\bigg)}{\bigg(
+\cfrac{1}{\sigma_{prior}^{2}} +\cfrac{n}{\sigma^{2}} \bigg)} ,\bigg(\cfrac{1}{\sigma_{prior}^{2}}+{\cfrac{n}{\sigma^{2}}}\bigg)^{-1}\Bigg)\\[1em]
+& = & \textrm{normal}\Bigg(\cfrac{\bigg(\cfrac{30}{144} +\cfrac{1538.549}{225}\bigg)}{\bigg(
+\cfrac{1}{144} +\cfrac{50}{225} \bigg)} ,\bigg(\cfrac{1}{144}+{\cfrac{50}{225}}\bigg)^{-1}\Bigg)\\[1em]
+& = & \textrm{normal}\big(30.75, 4.36 \big)
+\end{eqnarray}
+</div>
+
+```{r fig.widght = 6, fig.height = 5, fig.align = 'center', echo = key, include = key, message = FALSE}
+(varKnown <- 15^2)
+(n <- dim(SolsticeTemp)[1])
+(varPrior <- 12^2)
+(muPrior <- 30) 
+(y <- sum(SolsticeTemp$temp))
+(muPost <-((muPrior/varPrior) + y/varKnown)/((1/varPrior) + (n/varKnown)))
+(varPost <- 1/((1/varPrior) + (n/varKnown)))
+
+prior <- function(x) dnorm(x, muPrior, varPrior^.5)
+post <- function(x) dnorm(x, muPost, varPost^.5)
+
+plot(prior, 0, 60, main = "Normal prior (dash) and normal posterior (red)", xlab = expression(mu), 
+  ylab = "Density", lty = 2, ylim = c(0, 0.2), lwd = 2)
+plot(post, 0, 60, add = TRUE, col = "red", lwd = 2)
+```
+
+```{r echo = key, include = key, message = FALSE}
+bounds <- c(0.025, 0.975)
+bounds95 <- qnorm(bounds, muPost, varPost^.5)
+bounds95
+```

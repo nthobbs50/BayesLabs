@@ -1,0 +1,747 @@
+
+<style>
+
+/* uncomment out this to generate exercise */
+ .hider {display: none;}  
+ .hider2 {display: inline;} 
+
+/* uncomment out this to generate key */
+# .hider {display: inline;}  
+# .hider2 {display: none;}  
+
+</style>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:150px;height=150px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Multi-Level Model
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+<br>
+
+[I. Motivation][]
+
+[II. Problem][]
+
+[III. Premliminaries][]
+
+[IV. Pooled model][]
+
+[V. Intercepts vary with carbon level in site soils and slopes vary with fertilizer type][]
+
+[VI. Slope *and* intercepts vary by site][]
+
+[VII.  Model checking][]
+
+```{r preliminaries, include = FALSE, cache=TRUE}
+rm(list=ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE, messages = FALSE)
+
+# uncomment out this to generate key
+nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+ #nokey = TRUE; key = FALSE
+```
+
+<br>
+
+
+#### I. Motivation
+Multi-level models are a workhorse for understanding ecological processes because so many problems contain information at nested spatial scales, levels of organization, or categories. This problem will give you practice implementing the math that you wrote in the model building exercise on N~2~O emissions from agricultural soils.  The deterministic models that we will use here are linear, but the approach applies equally well to non-linear forms. The data set that you will analyze is described in the companion document `MultilevelModelBuildingExercise.pdf`.
+
+#### II. Problem
+You will write JAGS code to implement models of increasing complexity and power.
+
+#### III. Premliminaries
+There are two sets of problems here, one focusing on model writing, the other focusing on writing code to implement the MCMC in JAGS.  I suggest you work this way.  Alternate between the model model writing and the model coding. Study the math, then use the math as a template for your code.  If we had more time, I would have asked you to write the models.
+
+You need to load some data and libraries. It is always a good idea to look at the data. Examine the head of the data frame for emissions. Note that the columns `group.index` and `fert.index` contain indices for sites and fertilizer types. You will need to understand how these are used in the "index trick" covered in lecture. Plot $N_2O$ emissions as a function of fertilizer input by group and fertilizer type.  
+
+  
+```{r}
+library(rjags)
+library(reshape)
+library(ggplot2)
+library(ESS575)
+set.seed(5)
+#y=N2OEmission
+w=SiteCarbon
+#names(y)
+##In case someone has difficulty loading libraries
+y=read.csv("/Users/Tom/Documents/EcologicalModelingCourse/_A_Master_Lab_Exercises/Multi-level models NO2/OldFiles/NO_2 emission all data for exercise.csv")
+# y <- y[,2:9]
+w=read.csv("/Users/Tom/Documents/EcologicalModelingCourse/_A_Master_Lab_Exercises/Multi-level models NO2/OldFiles/Site_level_carbon_data for exercise.csv")
+# w <- w[,2:5]
+w$mean=w$mean/100  #transform carbon % to proportion
+y.n.sites = length(unique(y$group))
+head(y)
+qplot(n.input, emission, data=y, color =  group)
+qplot(n.input, emission, data=y, color =  fertilizer)
+
+
+```
+
+Later, you will also need a function to link the sequential indices used in JAGS to the groups (fertilizer and site) in the data.  This kind of function is needed when sites or factors in data frames do not correspond to an uninterrupted sequence of integers needed for indices by JAGS.  If there are letters or names or non-sequential numbers you will need a function like this to align the jags output with the factors, sites, etc. I provide this function below.  It would be a good idea to understand what it does.  
+(Actually, I think I will be able to show you a way to do this in a much more straightforwad way.  Stay tuned. I am almost done.)
+
+```{r}
+group_from_index = function(group, group.index, output ){
+  #group is a vector of group names or numbers (for factors or sites, etc.)
+  #group.index is vector of sequential indices to group names or numbers.  It is a sequence of integers 1 to length(group)
+  #output is a matrix or dataframe of JAGS output with number of rows = length(group). Each row contains statistics, etc from JAGS for each group.
+  a = unique(as.vector(group)) 
+  b = unique(group.index)
+  group.key=as.data.frame(t(rbind(a,b))) #columns containing group indices paired with group name or number
+  names(group.key)= c(names(as.data.frame(group)), names(as.data.frame(group.index))) 
+  link.column.name = names(group.key)[2] #name of column for merging output data with groups
+  output2 = cbind(seq(1,nrow(output)),output) #give the output data sequential index the same as the group index
+  colnames(output2)[1]=link.column.name
+  group.data=as.data.frame(merge(group.key, output2, by = link.column.name )) #merge the JAGS output with the group names or numbers
+  return(group.data)
+}
+```
+
+
+#### IV. Pooled model
+Your first task is to write a simple, "pooled" model where you gloss over differences in sites and fertilizer types and lump everything into a set of $x$ & $y$ pairs using the R template provided below. It is imperative that you study the data statement and match the variable names in your JAGS code to the left hand side of the = in the data list.  Call the intercept `alpha`, the slope `beta` and use `sigma` to name the standard deviation in the likelihood.
+```{r}
+#very important to study this:
+data = list(
+  y.emission = log(y$emission),
+  y.n.input = log(y$n.input)-mean(log(y$n.input)) #center the data to speed convergence and aid in interpretation.
+
+)
+  inits = list(
+  list(
+    alpha = 0,
+    beta = .5,
+    sigma = 50
+  ),
+  list(
+    alpha = 1,
+    beta = 1.5,
+    sigma = 10
+  )
+)
+
+```
+
+
+Write the code for the model.  Compile the model and execute the MCMC to produce a coda object. Produce trace plots of the chains for model parameters.  Produce a summary table for the parameters.  Test for convergence using the Gelman diagnostic.
+
+```{r, include=key, echo=key, eval=key }
+####Pooled model
+{
+sink("PooledJAGS.R")
+cat("
+model{
+#priors
+alpha ~ dnorm(0,.0001)
+beta ~ dnorm(0,.0001)
+sigma ~ dunif(0,100)
+tau.reg <- 1/sigma^2
+#likelihood
+#note that data have been log-transformed on the R side. 
+ for(i in 1:length(y.emission)){
+    log_mu[i] <- alpha + beta * y.n.input[i]
+    y.emission[i] ~ dnorm(log_mu[i], tau.reg)
+ }
+
+}
+    
+",fill=TRUE)
+sink()
+}
+
+```
+
+
+
+```{r, include=key, echo=key, eval=key}
+  n.adapt=3000
+  n.update=5000
+  n.iter= 5000
+jm.pooled = jags.model(file="PooledJAGS.R", data=data, n.adapt = n.adapt, inits=inits, n.chains=length(inits))
+
+
+```
+
+
+
+```{r, include=key, echo=key, eval=key}
+update(jm.pooled, n.iter = n.update)
+zc.pooled = coda.samples(jm.pooled, variable.names = c("alpha", "beta", "sigma"), n.iter=n.iter)
+plot(zc.pooled)
+summary(zc.pooled)
+gelman.diag(zc.pooled)
+```
+
+#### IV. Intercepts for each site
+Now you will implement the model that allows intercept to vary by group, where each intercept is drawn from a common distribution. Again, use the template provided below to allow you to concentrate on writing JAGS code for the model. Note that you must use the index trick covered in lecture to align the different groups with different intercepts. Here are the preliminaries to set up the model:
+
+```{r}
+data = list(
+  y.emission = log(y$emission),
+  y.n.input = log(y$n.input) - mean(log(y$n.input)), #center the data to speed convergence and aid in interpretation. Can recover 0 intercept if needed.
+  y.group = y$group.index,  
+  y.n.sites = length(unique(y$group))
+)
+
+inits = list(
+  list(
+    alpha = rep(0,y.n.sites),
+    beta = .5,
+    sigma = 50,
+    mu.alpha= 0,
+    sigma.alpha = 10
+  ),
+  list(
+    alpha = rep(1,y.n.sites),
+    beta = 1.5,
+    sigma = 10,
+    mu.alpha= -2,
+    sigma.alpha = 20
+  )
+)
+
+```
+
+Write the model code. Compile the model and summarize coda output. Test for convergence.
+
+
+```{r, include=key, echo=key, eval=key}
+{ #note this opening { and the closing } are needed by R markdown but not by R
+####Hierarchical model, site level intercept, no site covariate
+sink("Hier_1")
+cat("
+    model{
+    ##hyperpriors
+    mu.alpha ~ dnorm(0,.00001)
+    sigma.alpha ~ dunif(0,200) #notated varsigma in model documentation
+    tau.alpha <- 1/sigma.alpha^2
+    sigma ~ dunif(0,100)
+    tau.reg <- 1/sigma^2
+    ###priors
+    for(j in 1:y.n.sites){
+        alpha[j] ~ dnorm(mu.alpha,tau.alpha)
+      }
+    beta ~ dnorm(0,.0001)
+    ####
+    #likelihood
+    #note that data have been log-transformed on the R side. 
+    for(i in 1:length(y.emission)){
+        log_mu[i] <- alpha[y.group[i]] + beta * y.n.input[i]
+        y.emission[i] ~ dnorm(log_mu[i], tau.reg)
+    }
+    
+    }
+    
+    ",fill=TRUE)
+sink()
+}
+```
+
+
+
+```{r, include=key, echo=key, eval=key, fig.height=8}
+n.update=10000
+n.iter=25000
+
+jm.hier1 = jags.model("Hier_1", data=data, n.adapt = 3000, inits=inits, n.chains=length(inits))
+update(jm.hier1, n.iter = n.update)
+#You would want to include alphas in check for convergnce but I eliminated them here to make output more compact.
+zc.hier1 = coda.samples(jm.hier1, variable.names = c("sigma","beta", "mu.alpha", "sigma.alpha"), n.iter=n.iter)
+plot(zc.hier1)
+summary(zc.hier1)
+gelman.diag(zc.hier1)
+```
+####V. Intercepts vary with carbon level in site soils 
+
+Modify your model to include a covariate at the site level, soil carbon content,  as developed in the model writing problem #3.
+
+Set up data and initial conditions:
+
+```{r}
+#######Hierarchical model, site level intercept predicted from carbon concentration covariate and slope varying with fertilizer type. 
+
+data = list(
+  y.emission = log(y$emission),
+  y.n.input = log(y$n.input)-mean(log(y$n.input)), #center the data to speed convergence and aid in interpretation
+  y.group=  y$group.index,
+  y.fert = y$fert.index,
+  y.n.sites = length(unique(y$group)),
+  y.n.fert = length(unique(y$fertilizer)),
+  w = log(w$mean/(1-w$mean))   #logit of w$mean
+)
+y.n.sites = length(unique(y$group))
+y.n.fert = length(unique(y$fertilizer))
+inits = list(
+  list(
+    alpha = rep(0,y.n.sites),
+    beta = .5,
+    sigma = 50,
+    sigma.alpha = 10,
+    eta = .2,
+    kappa = .5
+  ),
+  list(
+    alpha = rep(-.2,y.n.sites),
+    beta = 1.5,
+    sigma = 10,
+    sigma.alpha = 20,
+    eta = .2,
+    kappa = 5
+  )
+)
+
+```
+
+Write the model code and compile it. Produce JAGS and CODA objects.  Summarize the coda object. Test for convergence.
+
+```{r, include=key, echo=key, eval=key}
+{
+sink("Hier_2")
+cat("
+    model{
+    #priors for within site model######
+    sigma ~ dunif(0,200)
+    tau.reg <- 1/sigma^2
+    beta ~ dnorm(0,.00001)
+    #priors for intercept model#######
+    kappa ~ dnorm(0,.00001)
+    eta ~ dnorm(0, .000001)
+    sigma.alpha ~ dunif(0,200)
+    tau.alpha <- 1/sigma.alpha^2
+    
+  
+
+    #likelihood for data, note that data are on log scale in data statement on R side.  
+    for(i in 1:length(y.emission)){
+      log_mu[i] <- alpha[y.group[i]] + beta * y.n.input[i]
+      y.emission[i] ~ dnorm(log_mu[i], tau.reg)
+    }
+    # carbon model for intercept
+  for(j in 1:y.n.sites){
+     #use normal because data are centered
+      mu.alpha[j] <- kappa + eta *w[j]
+      alpha[j] ~ dnorm(mu.alpha[j],tau.alpha)
+  }
+  
+ } #end of model
+    
+    ",fill=TRUE)
+sink()
+  
+}
+```
+
+
+
+```{r, include=key, echo=key, eval=key}
+n.update=25000
+n.iter=25000
+
+jm.hier2 = jags.model("Hier_2", data=data, n.adapt = 3000, inits=inits, n.chains=length(inits))
+jm.hier2
+
+update(jm.hier2, n.iter = n.update)
+#You would want to include alphas in check for convergnce but I eliminated them here to make output more compact.
+zc.hier2 = coda.samples(jm.hier2, variable.names = c("sigma","eta", "kappa"), n.iter=n.iter)
+#zj.hier2 = jags.samples(jm.hier2, variable.names = c(variable.names = c("alpha", "beta", "sigma","eta", "kappa")), n.iter=n.iter)
+plot(zc.hier2)
+gelman.diag(zc.hier2)
+summary(zc.hier2)
+```
+####VI. Intercepts vary with carbon level in site soils and slopes vary with fertilizer type
+
+Modify your model with the covariate at the site level, soil carbon content, to allow slopes to vary with fertilizer type as developed in the model writing problem #4.
+
+Set up data and initial conditions:
+
+
+```{r}
+#######Hierarchical model, site level intercept predicted from carbon concentration covariate and slope varying with fertilizer type. 
+
+data = list(
+  y.emission = log(y$emission),
+  y.n.input = log(y$n.input)-mean(log(y$n.input)), #center the data to speed convergence and aid in interpretation
+  y.group=  y$group.index,
+  y.fert = y$fert.index,
+  y.n.sites = length(unique(y$group)),
+  y.n.fert = length(unique(y$fertilizer)),
+  w = log(w$mean/(1-w$mean))   #logit of w$mean
+)
+y.n.sites = length(unique(y$group))
+y.n.fert = length(unique(y$fertilizer))
+inits = list(
+  list(
+    alpha = rep(0,y.n.sites),
+    beta = rep(.5,y.n.fert),
+    sigma = 50,
+    sigma.alpha = 10,
+    eta = .2,
+    kappa = .5
+  ),
+  list(
+    alpha = rep(-.2,y.n.sites),
+    beta = rep(1.5, y.n.fert),
+    sigma = 10,
+    sigma.alpha = 20,
+    eta = .2,
+    kappa = 5
+  )
+)
+
+```
+
+Write the model code and compile it. Produce JAGS and CODA objects.  Summarize the coda object. Test for convergence.
+
+```{r, include=key, echo=key, eval=key}
+{
+sink("Hier_3")
+cat("
+    model{
+    #priors for within site model######
+    sigma ~ dunif(0,200)
+    tau.reg <- 1/sigma^2
+    
+    #priors for intercept model#######
+    kappa ~ dnorm(0,.00001)
+    eta ~ dnorm(0, .000001)
+    sigma.alpha ~ dunif(0,200)
+    tau.alpha <- 1/sigma.alpha^2
+    #hyper priors for slope model
+    mu.beta ~ dnorm(0,.00001)
+    sigma.beta ~ dunif(0,200)
+    tau.beta <- 1/sigma.beta
+  
+
+    #likelihood for data, note that data are on log scale in data statement on R side.  
+    for(i in 1:length(y.emission)){
+      log_mu[i] <- alpha[y.group[i]] + beta[y.fert[i]] * y.n.input[i]
+      y.emission[i] ~ dnorm(log_mu[i], tau.reg)
+    }
+    # carbon model for intercept
+  for(j in 1:y.n.sites){
+     #use normal because data are centered
+      mu.alpha[j] <- kappa + eta *w[j]
+      alpha[j] ~ dnorm(mu.alpha[j],tau.alpha)
+  }
+  #Allow slope to vary by fertilizer type
+  for(k in 1:y.n.fert){
+    beta[k] ~ dnorm(mu.beta, tau.beta)
+  }
+ } #end of model
+    
+    ",fill=TRUE)
+sink()
+  
+}
+```
+
+
+
+```{r, include=key, echo=key, eval=key, fig.height=15}
+n.update=5000
+n.iter=2500
+
+jm.hier3 = jags.model("Hier_3", data=data, n.adapt = 3000, inits=inits, n.chains=length(inits))
+
+update(jm.hier3, n.iter = n.update)
+#You would want to include alphas in check for convergnce but I eliminated them here to make output more compact.
+zc.hier3 = coda.samples(jm.hier3, variable.names = c("sigma","eta", "kappa","beta", "mu.beta", "sigma.beta"), n.iter=n.iter)
+zj.hier3 = jags.samples(jm.hier3, variable.names = c(variable.names = c("alpha", "beta", "sigma","eta", "kappa")), n.iter=n.iter)
+plot(zc.hier3)
+gelman.diag(zc.hier3)
+summary(zc.hier3)
+
+
+
+```
+
+The answer will contain some plotting code that displays the results nicely. It would be a good idea to understand this code, but I didn't want to burden you with producing it!
+```{r include=key, echo=key, eval=key }
+slopes=t(summary(zj.hier3$beta,quantile, c(.025,.5,.957))$stat) #transpose, the t( ), is important to make next function work
+#slopes as function of fetilizer type
+group.data=group_from_index(group=y$fertilizer,group.index=y$fert.index,output=slopes)
+
+#table with medians and credible intervals for slopes by fertilizer type
+group.data
+
+#plot of medians and credible intervals for slopes by fertilizer type
+names(group.data)[3:5]=c("lower", "median", "upper")
+library(ggplot2)
+ggplot( group.data, aes(x = group, y = median)) +    geom_bar(position = position_dodge(), stat="identity", fill="red")  +   geom_errorbar(aes(ymin=lower, ymax=upper)) +   ggtitle("Medians of slopes by fertilizer type with 95% credible intervals") + # plot title 
+  labs(x="Fertilizer", y=expression(beta)) +
+  theme_bw() + # remove grey background (because Tufte said so)
+  theme(panel.grid.major = element_blank()) # remove x and y major grid lines (because Tufte said so)
+
+
+```
+
+#### VII. Slope *and* intercepts vary by site
+We now want to allow *both* slopes and intercepts to vary by site as described in the math exercise. This is a pretty challenging coding problem, so I thought it would be more useful for you to study code that works than to try to write the code yourself.  So take a careful look at the following and discuss it with your lab mates.
+
+As usual, we set up data and initial values:
+
+```{r}
+data = list(
+  y.emission = log(y$emission),
+  y.n.input = log(y$n.input)-mean(log(y$n.input)), #center the data to speed convergence and aid in interpretation-- there is no such thing as soil with 0 carbon
+  y.group=  y$group.index,
+  y.fert = y$fert.index,
+  y.n.sites = length(unique(y$group)),
+  y.n.fert = length(unique(y$fertilizer))
+)
+y.n.sites = length(unique(y$group))
+B = matrix(nrow=y.n.sites, ncol=2)
+B[,1]=0
+B[,2]=1.5
+inits = list(
+  list(
+    B=B,
+    sigma = 50,
+    mu.alpha = 0,
+    mu.beta = 1.5,
+    sigma.alpha = 10,
+    sigma.beta = 10,
+    rho=-.5
+  ),
+  list(
+    B=B*.5,
+    sigma = 20,
+    mu.alpha = -.2,
+    mu.beta = .8,
+    sigma.alpha = 50,
+    sigma.beta = 50,
+    rho=.5
+  )
+)
+
+
+```
+
+Here is the code for the model. Study it relative to the math.
+```{r}
+{
+sink("Hier_4")
+cat("
+    model{
+    #priors for within site model######
+    sigma ~ dunif(0,200)
+    tau.reg <- 1/sigma^2
+    
+    #likelihood for data, note that data are on log scale.
+    for(i in 1:length(y.emission)){
+      log_mu[i] <- alpha[y.group[i]] + beta[y.group[i]] * y.n.input[i]
+      y.emission[i] ~ dnorm(log_mu[i], tau.reg)
+    }
+    # Model for group intercept and slope:
+    for(j in 1:y.n.sites){
+        alpha[j] <- B[j,1]  #group level intercept
+        beta[j]  <- B[j,2]  #group level slope
+        B[j,1:2] ~ dmnorm(B.hat[j,1:2], Tau.B)  
+        B.hat[j,1] <- mu.alpha  #required by JAGS syntax
+        B.hat[j,2] <- mu.beta   #required by JAGS syntax
+    }
+    mu.alpha ~ dnorm(0,.0001)  #mean intercept
+    mu.beta ~ dnorm(0, .0001)  #mean slope
+    #Inverse of covariance matrix required by JAGS
+    Tau.B[1:2,1:2] <- inverse(Sigma.B[1:2,1:2])
+    #Elements of covariance matrix
+    Sigma.B[1,1] <- sigma.alpha^2
+    sigma.alpha ~ dunif(0,200)
+    Sigma.B[2,2] <- sigma.beta^2
+    sigma.beta ~ dunif(0,200)
+    Sigma.B[1,2] <- rho*sigma.alpha*sigma.beta  # covariance is correlation coef. x product of variances
+    Sigma.B[2,1] <- Sigma.B[1,2]
+    rho ~ dunif(-1,1)
+    } #end of model
+    
+    ",fill=TRUE)
+sink()
+}
+```
+
+Compile the model and get some output.  Red bars give medians; black lines are 95% credible intervals
+
+```{r}
+n.update=50000
+n.iter=10000
+
+jm.hier4 = jags.model("Hier_4", data=data, n.adapt = 3000, inits=inits, n.chains=length(inits))
+
+
+update(jm.hier4, n.iter = n.update)
+#You should run diagnostics on zc.hier coda object for intecepts and slopes but I eliminated them here to make output more compact
+zc.hier4 = coda.samples(jm.hier4, variable.names = c('mu.alpha', "mu.beta", "rho"), n.iter=n.iter)
+zj.hier4 = jags.samples(jm.hier4, variable.names = c("alpha", "beta", 'mu.alpha', "mu.beta", "rho"), n.iter=n.iter)
+plot(zc.hier4)
+gelman.diag(zc.hier4)
+summary(zc.hier4)
+
+#Make a vector to link sequential index (in ouput) to the group number.  Would work the same way if groups were character variables like names. t() is transpose. See group_from_index() function at top of file
+slopes = t(summary(zj.hier4$beta, quantile, c(.025,.5,.975))$stat) #transpose is t() is important to make next function work
+group.data=as.data.frame(group_from_index(group=y$group,group.index=y$group.index,output=slopes))
+names(group.data)[3:5]=c("lower", "median", "upper")
+library(ggplot2)
+ggplot( group.data, aes(x = group, y = median)) +    geom_bar(position = position_dodge(), stat="identity", fill="red")  +   geom_errorbar(aes(ymin=lower, ymax=upper)) +   ggtitle("Medians of site-level slopes with 95% credible intervals") + # plot title 
+  labs(x="Site", y=expression(beta)) +
+  theme_bw() + # remove grey background (because Tufte said so)
+  theme(panel.grid.major = element_blank()) # remove x and y major grid lines (because Tufte said so)
+
+
+plot(density(zj.hier4$mu.beta), xlab = expression(mu[beta]), main="Posterior distribution of mean slope", cex.lab=1.25)
+
+```
+
+#### VII.  Model checking
+
+### Motivation
+All statistical inference is based on some type of statistical model.  A truly fundamental requirement for reliable inference is that the statistical model is capable of giving rise to the data.  If this requirement is not met, you have *no* basis for inference. Statistical theory will not back you up. You are flying blind, proceeding bravely, perhaps foolishly, on your own. These truths motivate the need for model checking.  Models that fail checks should be discarded at the outset.  (This is *not* model selection.  More about that later.)
+
+The Bayesian approach provides a method, simple to implement, that allows you to check if your model is capable of producing the  data.  It is called a *posterior predictive check*.  The details of the math are given Hobbs and Hooten 8.1 and were covered in lecture. Here is a brief description of how to code it.  The algorithm goes like this:
+
+1. Simulate a new data set at each iteration of the MCMC.  This sounds formidable, but it is really no more than drawing a random variable from the likelihood.  So, for example if your likelihood is 
+```{r, eval=FALSE}
+y[i] ~ dnorm(log_mu[i], tau)
+```
+you can simulate a new data set by embedding  
+
+```{r, eval = FALSE}
+y.sim[i] ~ dnorm(log_mu[i], tau)
+```
+
+in the same `for` loop.
+
+2. Calculate a test statistic based on the real and the simulated data.  The test statistic could be a mean, standard deviation, coefficient of variation, discrepancy, minimum, maximum -- really any function that helps you compare the simulated and real data. I think it is wise to always include a test statistic that in someway reflects the variance because it is harder for the model to get the variance 
+
+3. We are interested in calculating a Bayesian p value, the probability that the test statistic computed from the simulated data is more extreme than the test statistic computed from the real data. There is evidence of lack of fit -- the model cannot give rise to the data -- if the Bayesian p value is large or small.  We want values between, say, .10 and .90, ideally close to .5. To obtain this the Bayesian p we use the JAGS `step(x)` function that returns 0 if x is less 0 and and 1 otherwise.  So, presume our test statistic for was the standard deviation.  Consider the following pseudo-code:
+```{r eval=FALSE}
+for(i in 1:length(y)){
+  mu[i] <- prediction from model
+  y[i] ~ dnorm(mu[i], tau)
+  y.sim[i] ~ dnorm(mu[i], tau)
+}
+sd.data<-sd(y[])
+sd.sim <-sd(y.sim[])
+p.sd <- step(sd.sim - sd.data)
+```
+That is all there is to it.  You then include `p.sd` in your jags or coda object.
+
+###Problem
+
+Return to the pooled model you developed in the first problem of multi-level modeling exercise. Do posterior predictive checks using the mean, standard deviation, minimum, and discrepancy as test statistics.  The discrepancy statistic is is $\sum_{i=1}^{n}(y_i-\mu_i)^2$ where $\mu_i$ is the $i^th$ prediction of your model. Overlay the posterior distribution of the simulated data on the histogram of the read data (density on y axis, not frequency). What do you conclude?  Is there any indication of lack of fit?  Enough to discard the model?
+
+```{r}
+#preliminaries
+library(rjags)
+library(reshape)
+library(ggplot2)
+set.seed(5)
+#setwd("/Users/Tom/Documents/Ecological Modeling Course/_A_Master_Lab_Exercises/Multi-level models NO2/")
+y.n.sites = length(unique(y$group))
+
+#data for all models except last one
+data = list(
+  y.emission = log(y$emission),
+  y.n.input = log(y$n.input) - mean(log(y$n.input)) #center the data to speed convergence and aid in interpretation. Can recover 0 intercept if needed.
+
+)
+
+
+
+inits = list(
+  list(
+    alpha = 0,
+    beta = .5,
+    sigma = 50
+  ),
+  list(
+    alpha = 1,
+    beta = 1.5,
+    sigma = 10
+  )
+)
+
+
+```
+
+
+
+```{r,eval=key, echo=key}
+####Pooled model
+{
+sink("Pooled")
+cat("
+model{
+#priors
+alpha ~ dnorm(0,.0001)
+beta ~ dnorm(0,.0001)
+sigma ~ dunif(0,100)
+tau.reg <- 1/sigma^2
+#likelihood
+ for(i in 1:length(y.emission)){
+    mu[i] <- alpha + beta * y.n.input[i]
+    y.emission[i] ~ dnorm(mu[i], tau.reg)
+    #simulated data for posterior predictive checks
+    y.emission.sim[i] ~ dnorm(mu[i], tau.reg) 
+    sq.error.data[i] <- (y.emission[i]-mu[i])^2
+    sq.error.sim[i] <- (y.emission.sim[i] - mu[i])^2
+ }
+#Bayesian P values
+sd.data <- sd(y.emission)
+sd.sim <- sd(y.emission.sim)
+p.sd <- step(sd.sim-sd.data)
+
+mean.data <- mean(y.emission)
+mean.sim  <- mean(y.emission.sim)
+p.mean <- step(mean.sim - mean.data)
+
+discrep.data <- sum(sq.error.data)
+discrep.sim <- sum(sq.error.sim)
+p.discrep <- step(discrep.sim - discrep.data)
+
+min.data <- min(y.emission)
+min.sim <- min(y.emission.sim)
+p.min <-step(min.sim-min.data)
+}
+    
+",fill=TRUE)
+sink()
+}
+```
+
+
+
+
+```{r, eval=key, echo=key}
+n.update=10000
+n.iter=10000
+n.update = 3000
+jm.pooled = jags.model("Pooled", data=data, n.adapt = 3000, inits=inits, n.chains=length(inits))
+update(jm.pooled, n.iter = n.update)
+#zc.pooled = coda.samples(jm.pooled, variable.names = c("alpha", "beta", "sigma"), n.iter=n.iter)
+zj.pooled = jags.samples(jm.pooled, variable.names = c("alpha", "beta", "sigma", "p.sd", "p.mean", "p.discrep","p.min", "y.emission.sim"), n.iter=n.iter)
+zj.pooled$p.sd
+zj.pooled$p.mean
+zj.pooled$p.discrep
+zj.pooled$p.min
+
+
+hist(data$y.emission, breaks=20, freq=FALSE, main="Simulated and real data", xlab=expression(paste("log(", N0[2], " emission)")), cex.lab=1.2) #note that this is the log transformed data
+lines(density(zj.pooled$y.emission.sim), col="red")
+legend(-10,.2,"simulated", col="red", lty="solid")
+
+```
+

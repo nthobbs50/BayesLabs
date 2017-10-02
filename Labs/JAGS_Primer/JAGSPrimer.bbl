@@ -1,0 +1,64 @@
+\begin{thebibliography}{11}
+
+\bibitem[Gelman and Rubin(1992)]{Gelman_Rubin}
+Gelman, A. and D.~B. Rubin, 1992.
+\newblock Inference from iterative simulation using multiple sequences.
+\newblock \emph{Statistical Science} \textbf{7}:457--472.
+
+\bibitem[Heidelberger and Welch(1983)]{Heidelberger_and_Welch}
+Heidelberger, P. and P.~D. Welch, 1983.
+\newblock Simulation run length control in the presence of an initial
+  transient.
+\newblock \emph{Operations Research} \textbf{31}:1109--1044.
+
+\bibitem[Hobbs and Hooten(2015)]{hobbs2015bayesian}
+Hobbs, N.~T. and M.~B. Hooten, 2015.
+\newblock Bayesian models: A statistical primer for ecologists.
+\newblock Princeton University Press, Princeton, New Jersey, USA.
+
+\bibitem[Knops and Tilman(2000)]{Knops_Tilman}
+Knops, J. M.~H. and D.~Tilman, 2000.
+\newblock Dynamics of soil nitrogen and carbon accumulation for 61 years after
+  agricultural abandonment.
+\newblock \emph{Ecology} \textbf{81}:88--98.
+
+\bibitem[Link and Eaton(2012)]{Link:2012ve}
+Link, W.~A. and M.~J. Eaton, 2012.
+\newblock On thinning of chains in {MCMC}.
+\newblock \emph{Methods in Ecology and Evolution} \textbf{3}:112--115.
+
+\bibitem[McCarthy(2007)]{McCarthy_Bayes_book}
+McCarthy, M.~A., 2007.
+\newblock Bayesian methods for ecology.
+\newblock Cambridge University Press, Cambridge, United Kingdom.
+
+\bibitem[Plummer(2015)]{Plummer_mannual}
+Plummer, M., 2015.
+\newblock {JAGS Version 4.0.0 user manual}.
+
+\bibitem[Plummer et~al.(2016{a})Plummer, Best, Cowles, Vines, Bates, Almond,
+  and Magnusson]{Plummer2016coda}
+Plummer, M., N.~Best, K.~Cowles, K.~Vines, D.~Bates, R.~Almond, and
+  A.~Magnusson, 2016{a}.
+\newblock {coda: Output analysis and diagnostics for MCMC. R package version
+  0.18-1}.
+
+\bibitem[Plummer et~al.(2016{b})Plummer, Stukalov, and
+  Denwood]{Plummer2016rjags}
+Plummer, M., A.~Stukalov, and M.~Denwood, 2016{b}.
+\newblock {rjags: Bayesian graphical models using MCMC. R package version 4-6}.
+
+\bibitem[{{R Development Core Team}}(2016)]{R-Core-Team:2015fk}
+{{R Development Core Team}}, 2016.
+\newblock R: A Language and Environment for Statistical Computing.
+\newblock {R Foundation for Statistical Computing}, {Vienna, Austria}.
+
+\bibitem[Raftery and Lewis(1995)]{Raftery_et_al1995}
+Raftery, A.~E. and S.~M. Lewis, 1995.
+\newblock The number of iterations, convergence diagnostics and generic
+  metropolis algorithms.
+\newblock In W.~R. Gilks, D.~J. Spiegelhalter, and S.~Richardson, editors,
+  \emph{Practical Markov Chain Monte Carlo}. Chapman and Hall, London, United
+  Kingdom.
+
+\end{thebibliography}

@@ -1,0 +1,12 @@
+\contentsline {exercise}{\numberline {1}{\ignorespaces Writing a DAG\relax }}{8}{exercise.caption.4}
+\contentsline {exercise}{\numberline {2}{\ignorespaces Can you improve these priors?\relax }}{12}{exercise.caption.6}
+\contentsline {exercise}{\numberline {3}{\ignorespaces Using \texttt {for} loops}}{15}{exercise.caption.7}
+\contentsline {exercise}{\numberline {4}{\ignorespaces Coding the logistic regression}}{22}{exercise.caption.11}
+\contentsline {exercise}{\numberline {5}{\ignorespaces Coding the logistic regression to run in parallel}}{26}{exercise.caption.13}
+\contentsline {exercise}{\numberline {6}{\ignorespaces Manipulating coda summaries}}{29}{exercise.caption.14}
+\contentsline {exercise}{\numberline {7}{\ignorespaces Understanding coda objects}}{31}{exercise.caption.15}
+\contentsline {exercise}{\numberline {8}{\ignorespaces Convert the \texttt {zm} object to a data frame}}{33}{exercise.caption.16}
+\contentsline {exercise}{\numberline {9}{\ignorespaces Vectors in coda objects}}{33}{exercise.caption.17}
+\contentsline {exercise}{\numberline {10}{\ignorespaces Making plots with JAGS objects}}{35}{exercise.caption.18}
+\contentsline {exercise}{\numberline {11}{\ignorespaces Manipulating JAGS objects}}{38}{exercise.caption.19}
+\contentsline {exercise}{\numberline {12}{\ignorespaces Assessing convergence}}{42}{exercise.caption.20}

@@ -1,0 +1,15 @@
+
+model{
+#b0~dnorm(0,.25)
+#b1 ~ dnorm(0,.25)
+b0~dnorm(0,.0001)
+b1~dnorm(0,.0001)
+sigma ~ dunif(0,5)
+for(i in 1:length(x)){
+	mu[i]<-ilogit(b0+b1*x[i])
+	 a[i] <-max(0,(mu[i]^2-mu[i]^3-mu[i]*sigma^2)/sigma^2)
+	 b[i] <- max(0,(mu[i]-2*mu[i]^2+mu[i]^3-sigma^2+mu[i]*sigma^2)/sigma^2)
+	 y[i] ~ dbeta(a[i],b[i])
+	  }
+}
+

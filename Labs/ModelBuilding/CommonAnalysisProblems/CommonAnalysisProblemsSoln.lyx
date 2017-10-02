@@ -1,0 +1,1113 @@
+#LyX file created by tex2lyx 2.0.3
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+     
+                   	
+\usepackage{bm}
+\usepackage{enumitem}
+
+\newif\ifanswers
+\answerstrue % comment out to hide answers
+
+\usepackage{fancyheadings}
+\lhead {SESYNC Bayesian Short Course}
+\rhead{August 19-28, 2015}
+\title{Common Analysis Problems}
+\date{August 19, 2015}							
+
+
+
+\end_preamble
+\use_default_options false
+\language english
+\language_package none
+\inputencoding auto
+\fontencoding default
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+\graphics default
+\paperfontsize 12
+\spacing other 1.5
+\use_hyperref 0
+\papersize letterpaper
+\use_geometry true
+\use_amsmath 2
+\use_esint 1
+\use_mhchem 0
+\use_mathdots 0
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle fancy
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+maketitle
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+thispagestyle{fancy}
+\end_layout
+
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Section*
+
+
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+[leftmargin=*]
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+You are interested in modeling the relationship between per capita income and an index of air pollution for 80 nations around the world (i.e., the Kuznets effect). You hypothesize that air pollution increases then declines as per capita income increases. You have data on the mean (and the standard deviation of the mean) for each country's air quality index (a continuous non-negative variable). The predictor variable (income) is not measured perfectly because it is based on a sample -- you have a mean and a standard deviation of the mean for the per capita income of each county. How would you analyze these data?
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+ifanswers
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+
+\begin_layout Standard
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+center
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics 
+	filename KuznetsDAG.pdf
+	width 4.75in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Standard
+
+In this DAG, 
+\begin_inset Formula $y_{i}$
+\end_inset
+
+ and 
+\begin_inset Formula $sd_{y,i}$
+\end_inset
+
+ and 
+\begin_inset Formula $x_{i}$
+\end_inset
+
+ and 
+\begin_inset Formula $sd_{x,i}$
+\end_inset
+
+ and are the means (and standard deviations of the means) of air quality and per capita income in the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ county.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Formula \begin{align*}
+\big[ \bm{z}, \bm{w}, \alpha, \bm{\beta}, \sigma^{2}_{p} \mid \bm{y}, \bm{x} \big] \varpropto & \prod^{n}_{i=1} \big[z_{i} \mid g\big( \alpha, \bm{\beta}, w_{i} \big), \sigma^{2}_{p} \big] \big[x_{i} \mid w_{i}, sd^{2}_{x,i} \big] \big[y_{i} \mid z_{i}, sd^{2}_{y,i} \big] \\
+& \times \big[z_{i} \big] \big[ w_{i} \big] \big[ \alpha \big] \big[ \beta_{0} \big] \big[ \beta_{1} \big] \big[ \sigma^{2}_{p} \big] 
+\end{align*}
+\end_inset
+
+
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+&g\big( \alpha, \bm{\beta}, w_{i} \big)\big) = e^{\alpha + \beta_{1}w_{i} + \beta_{2}w_{i}^{2}}\\
+&z_{i} \sim \textrm{lognormal}\big(\textrm{log}\big(g\big( \alpha, \bm{\beta}, w_{i} \big)\big), \sigma^{2}_{p} \big) \\
+&y_{i} \sim \textrm{lognormal} \big(\textrm{log}\big(z_{i}\big), sd^{2}_{y,i} \big) \\
+&x_{i} \sim \textrm{lognormal} \big(\textrm{log}\big(w_{i}\big), sd^{2}_{x,i} \big) \\
+&w_{i} \sim \textrm{gamma} \big(.001, .001) \\
+\end{aligned}\quad\quad\quad
+\begin{aligned}[c]
+&z_{i} \sim \textrm{gamma} \big(.001, .001) \\
+&\alpha \sim \textrm{normal} \big(0, .001) \\
+&\beta_{1} \sim \textrm{normal} \big(0, .001) \\
+&\beta_{2} \sim \textrm{normal} \big(0, .001) \\
+&\sigma_{p} \sim \textrm{uniform} \big(0, 10)
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+fi
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+You have data on the relationship between incidence of lung cancer in households (1 if cancer is present and 0 if no cancer) and radon levels in the house for 1000 houses within 40 counties within a state. You also have data on the clay soil content at the county level, which you heroically assume is know without error. How would you model the effect of radon and soil type on the probability on the probability of lung cancer?
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+ifanswers
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+
+\begin_layout Standard
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+center
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics 
+	filename RadonDAG.pdf
+	width 2.75in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Standard
+
+In this DAG, 
+\begin_inset Formula $x_{ij}$
+\end_inset
+
+ is the radon level and 
+\begin_inset Formula $y_{ij}$
+\end_inset
+
+ is an indicator which equals 1 if cancer is present and 0 if it is not in the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ house in the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ county, and 
+\begin_inset Formula $w_{j}$
+\end_inset
+
+ is the clay soil content in the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ county.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Formula \begin{align*}
+\big[\bm{\gamma}, \bm{\beta}, \sigma^{2} \mid \bm{y} \big] \varpropto \prod_{i=1}^{M_{j}} \prod_{j=1}^{N} \big[y_{ij} \mid g\big(\bm{\beta}, x_{ij} \big)\big]  \big[\beta_{0,ij} \mid h\big(\bm{\gamma}, w_{j} \big), \sigma^{2}\big]  \big[\bm{\gamma}\big] \big[\beta_{1}\big] \big[\sigma^{2}\big] 
+\end{align*}
+\end_inset
+
+
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+&g\big(\bm{\beta}, x_{ij} \big) = \frac{e^{\beta_{0,ij} + \beta_1 x_{ij}}}{1 + e^{\beta_{0,ij} + \beta_1 x_{ij}}} \\
+&h\big(\bm{\gamma}, w_{j} \big) = \gamma_{0} + \gamma_{1} w_{j} & \\
+&y_{ij} \sim \textrm{Bernoulli} \big(g\big(\bm{\beta}, x_{ij} \big)\big) \\
+&\beta_{0} \sim \textrm{normal} \big(h\big(\bm{\gamma}, w_{j} \big), \sigma^{2}) \\
+&\beta_{1} \sim \textrm{normal} \big(0, .001) \\
+\end{aligned}\quad\quad\quad
+\begin{aligned}[c]
+&\gamma_{0} \sim \textrm{normal} \big(0, .001) \\
+&\gamma_{1} \sim \textrm{normal} \big(0, .001) \\
+&\sigma \sim \textrm{uniform} \big(0, 100) \\
+& \\
+& \\
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+fi
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+You have plot level data on diversity of plant communities. The data consist of counts 
+\begin_inset Formula $y_{ij}$
+\end_inset
+
+ of the number of individuals of species 
+\begin_inset Formula $i$
+\end_inset
+
+ on 
+\begin_inset Formula $j = 1...J$
+\end_inset
+
+ same-sized plots, and the total number of individuals on plot 
+\begin_inset Formula $j$
+\end_inset
+
+ is reported as 
+\begin_inset Formula $n_{j}$
+\end_inset
+
+. How would you estimate an index 
+\begin_inset Formula $(H)$
+\end_inset
+
+ of species diversity across the community, where 
+\begin_inset Formula $H=-\sum^{R}_{i=1}p_{i}\textrm{ln}\big(p_{i}\big)$
+\end_inset
+
+, 
+\begin_inset Formula $(p_{i})$
+\end_inset
+
+ is the mean proportion of the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ species in in the community, and R is the total number of species present? All estimates must include proper accounting for uncertainty.
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+ifanswers
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+
+\begin_layout Standard
+\align center
+
+
+\begin_inset Graphics 
+	filename DiversityDAG.pdf
+	width 1.5in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Standard
+
+In this DAG, 
+\begin_inset Formula $y_{ij}$
+\end_inset
+
+ is the number of individuals in the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ species observed in the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ plot while 
+\begin_inset Formula $n_{j}$
+\end_inset
+
+ is the total number of individuals across all species observed in the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ plot.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Formula \begin{align*}
+\big[\bm{\phi} \mid \mathbf{Y}, \bm{n} \big] \varpropto \prod_{j=1}^{J} \big[\bm{y}_{j} \mid n_{j}, \bm{\phi} \big] \big[\bm{\phi}\big]
+\end{align*}
+\end_inset
+
+
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+& H = -\sum^{R}_{i=1}\phi_{i}\textrm{ln}\big(\phi_{i}\big) \\
+&\bm{y}_{j} \sim \textrm{multinomial}\big(n_{j}, \bm{\phi}\big) \\
+&\bm{\phi} \sim \textrm{Dirichlet}\underbrace{\big(1,1,\cdots,1\big)'}_\text{a vector of length R}
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset VSpace 10mm
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+where 
+\begin_inset Formula $R$
+\end_inset
+
+ is the the total number of species across all plots (this comes from the data). 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+fi
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+
+You have data on the number of willow seedings that establish on 100 different 10 
+\begin_inset Formula $\times$
+\end_inset
+
+ 10 meter plots. Assume these data are measured perfectly, i.e. you did not over or under count seedlings. You also have 5 measurements of soil water and 1 measurement of percent cover (estimated visually) on each plot. How would you model the effect of soil water and percent bare soil on the number of plants established? You also have paired data of visually estimated cover and actual cover on 15 calibration plots (separate from the 100 plots with seedling and soil water data), where the actual proportion of vegetated soil was laboriously measured using 1 
+\begin_inset Formula $\times$
+\end_inset
+
+ 1 meter gridded quadrats. How would you incorporate uncertainty in the percent cover and soil water covariates in your analysis?
+\end_layout
+
+\begin_layout Enumerate
+
+Now presume that the 100 plots are arranged in 5 different stream reaches. You have data on peak runoff in each of the reaches, which you may assume is measured perfectly. You want to understand variation at the catchment scale created by peak runoff. How would you include these data in the model you developed in problem 4?
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+ifanswers
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+
+\begin_layout Standard
+\align center
+
+
+\begin_inset Graphics 
+	filename WillowCalibrationDAG.pdf
+	width 2.5in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Standard
+
+In this DAG, 
+\begin_inset Formula $x_{c,m}$
+\end_inset
+
+ is the percent cover estimated visually and 
+\begin_inset Formula $w_{c,m}$
+\end_inset
+
+ is the actual percent cover measured with a quadrat in the 
+\begin_inset Formula $m_{th}$
+\end_inset
+
+ calibration plot.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Formula \begin{align*}
+\big[\bm{\gamma}, \sigma^{2}_{c} \mid \bm{x_{c}} \big] \varpropto & \prod_{m=1}^{15} \big[\bm{x}_{c,m} \mid \mu_{m}, \sigma^{2}_{c} \big]  \big[\gamma_{0} \big] \big[\gamma_{1} \big] \big[\sigma^{2}_{c} \big] \\
+\end{align*}
+\end_inset
+
+
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+&\mu_{m}= \frac{e^{\gamma_{0} + \gamma_1 w_{c,m}}}{1 + e^{\gamma_{0} + \gamma_1 w_{c,m}}} \\
+&\alpha_{m} =  \frac{\mu_{m}^{2} - \mu_{m}^{3} - \mu_{m}\sigma^{2}_{c}}{\sigma^{2}_{c}} \\
+&\beta_{m} =  \frac{\mu_{m}^{2} - 2\mu_{m}^{2} + \mu_{m}^{3} - \sigma^{2}_{c} + \mu_{m}\sigma^{2}_{c}}{\sigma^{2}_{c}} \\
+& x_{c,m} \sim \textrm{beta}\big(\alpha_{m}, \beta_{m}\big) \\
+\end{aligned} \quad\quad\quad
+\begin{aligned}[c]
+&\gamma_{0} \sim \textrm{normal} \big(0, .001) \\
+&\gamma_{1} \sim \textrm{normal} \big(0, .001) \\
+&\sigma_{c} \sim \textrm{uniform} \big(0, 100) \\
+& \\
+& \\
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset VSpace 10mm
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+To use informed priors on 
+\begin_inset Formula $\gamma_{0}$
+\end_inset
+
+, 
+\begin_inset Formula $\gamma_{1}$
+\end_inset
+
+, and 
+\begin_inset Formula $\sigma^{2}_{c}$
+\end_inset
+
+ we take the mean and standard deviation of each of their MCMC chains. For 
+\begin_inset Formula $\bm{\gamma}$
+\end_inset
+
+ we must convert the standard deviations to precisions, and for 
+\begin_inset Formula $\sigma^{2}_{c}$
+\end_inset
+
+ we must moment match to the parameters of a probability distribution whose support is all positive, such as gamma or lognormal. Please see the appendix for details. 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+
+\begin_layout Standard
+\align center
+
+
+\begin_inset Graphics 
+	filename WillowDAG.pdf
+	width 5.75in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Standard
+
+In this DAG, 
+\begin_inset Formula $y_{i}$
+\end_inset
+
+ is the number of willow seedlings, 
+\begin_inset Formula $x_{s,ij}$
+\end_inset
+
+ is the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ measurement of soil water content, and 
+\begin_inset Formula $x_{c,i}$
+\end_inset
+
+ is a visual estimate of percent cover on the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ plot.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Formula \begin{align*}
+\big[\bm{\beta}, \bm{\gamma}, \bm{w_{s}}, \bm{w_{c}}, \sigma^{2}_{s}, \sigma^{2}_{c} \mid \bm{y}, \bm{x_{s}}, \bm{x_{c}} \big] \varpropto & \prod_{i=1}^{100} \big[y_{i} \mid g\big(\bm{\beta}, w_{s,i}, w_{c,i}\big)\big] \prod_{j=1}^{5} \big[x_{s,ij} \mid \textrm{log}\big(w_{s,i}\big), \sigma^{2}_{s} \big]\\
+&\times  \big[\bm{x}_{c,i} \mid \mu_{i}, \sigma^{2}_{c} \big] \big[\beta_{0} \big] \big[\beta_{1} \big] \big[\gamma_{0} \big] \big[\gamma_{1} \big] \big[w_{s,i}\big] \big[w_{c,i}\big] \big[\sigma^{2}_{s}\big] \big[\sigma^{2}_{c}\big]       
+\end{align*}
+\end_inset
+
+
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+&g\big(\bm{\beta}, w_{s,i}, w_{c,i} \big) =e^{\beta_{0} + \beta_{1} w_{s,i} + \beta_{2} w_{c,i}}\\
+&\mu_{i}= \frac{e^{\gamma_{0} + \gamma_1 w_{c,i}}}{1 + e^{\gamma_{0} + \gamma_1 w_{c,i}}} \\
+&\alpha_{i} =  \frac{\mu_{i}^{2} - \mu_{i}^{3} - \mu_{i}\sigma^{2}_{c}}{\sigma^{2}_{c}} \\
+&\beta_{i} =  \frac{\mu_{i}^{2} - 2\mu_{i}^{2} + \mu_{i}^{3} - \sigma^{2}_{c} + \mu_{i}\sigma^{2}_{c}}{\sigma^{2}_{c}} \\
+&y_{i} \sim \textrm{Poisson} \big(g\big(\bm{\beta}, w_{s,i}, w_{c,i}\big)\big) \\
+&x_{s,ij} \sim \textrm{lognormal} \big(\textrm{log}\big(w_{s,i}\big), \sigma^{2}_{s}\big) \\
+& x_{c,i} \sim \textrm{beta}\big(\alpha_{i}, \beta_{i}\big) \\
+\end{aligned}\quad\quad\quad
+\begin{aligned}[c]
+&\beta_{0} \sim \textrm{normal} \big(0, .001) \\
+&\beta_{1} \sim \textrm{normal} \big(0, .001) \\
+&w_{s,i} \sim \textrm{gamma} \big(.001, .001) \\
+&w_{c,i} \sim \textrm{uniform} \big(0, 1) \\
+&\gamma_{0} \sim \textrm{normal} \big( \gamma_{0,mean}, \gamma_{0,prec}) \\
+&\gamma_{1} \sim \textrm{normal} \big( \gamma_{1,mean}, \gamma_{1,prec}) \\
+&\sigma_{s} \sim \textrm{uniform} \big(0, 100) \\
+&\sigma^{2}_{c} \sim \textrm{gamma} \big(\sigma^{2}_{c,\alpha},\sigma^{2}_{c,\beta}\big)\\
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset VSpace 10mm
+\end_inset
+
+ See appendix to understand how we determined the numerical priors on 
+\begin_inset Formula $\gamma_{0}$
+\end_inset
+
+, 
+\begin_inset Formula $\gamma_{1}$
+\end_inset
+
+, and 
+\begin_inset Formula $\sigma^{2}_{c}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+
+\begin_layout Standard
+\align center
+
+
+\begin_inset Graphics 
+	filename WillowMultiLevelDAG.pdf
+	width 5.5in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Standard
+
+In this DAG, 
+\begin_inset Formula $y_{ik}$
+\end_inset
+
+ is the number of willow seedlings, 
+\begin_inset Formula $x_{s,ijk}$
+\end_inset
+
+ is the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ measurement of soil water content, 
+\begin_inset Formula $x_{c,ik}$
+\end_inset
+
+ is a visual estimate of percent cover, and 
+\begin_inset Formula $x_{r,k}$
+\end_inset
+
+ is peak runoff on the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ plot in the 
+\begin_inset Formula $k_{th}$
+\end_inset
+
+ stream reach.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Formula \begin{align*}
+\big[\bm{\beta}, \bm{\gamma}, \bm{\eta}, \bm{w_{s}}, \bm{w_{c}}, \sigma^{2}_{s}, \sigma^{2}_{c}, \sigma^{2}_{r} & \mid \bm{y}, \bm{x_{s}}, \bm{x_{c}},  \bm{x_{r}} \big] \varpropto \\
+& \prod_{i=1}^{20} \prod_{k=1}^{5} \big[y_{ik} \mid g\big(\bm{\beta}, w_{s,ik}, w_{c,ik}\big)\big]  \big[\beta_{0,k} \mid h\big(\bm{\eta}, x_{r,k}\big)\big] \\
+& \times \prod_{j=1}^{5} \big[x_{s,ijk} \mid \textrm{log}\big(w_{s,ik}\big), \sigma^{2}_{s} \big] \big[\bm{x}_{c,ik} \mid \mu_{ik}, \sigma^{2}_{c} \big] \\
+& \times \big[\beta_{1} \big] \big[\gamma_{0} \big] \big[\gamma_{1} \big] \big[\eta_{0} \big] \big[\eta_{1} \big]
+\big[w_{s,ik}\big] \big[w_{c,ik}\big] \big[\sigma^{2}_{s}\big] \big[\sigma^{2}_{c}\big] \big[\sigma^{2}_{r}\big]         
+\end{align*}
+\end_inset
+
+
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+&g\big(\bm{\beta}, w_{s,ik}, w_{c,i} \big) =e^{\beta_{0,k} + \beta_{1} w_{s,ik} + \beta_{2} w_{c,ik}}\\
+&h\big(\bm{\eta}, x_{r,k} \big) =\eta_{0} + \eta_{1} x_{r,k}\\
+&\mu_{ik}= \frac{e^{\gamma_{0} + \gamma_1 w_{c,ik}}}{1 + e^{\gamma_{0} + \gamma_1 w_{c,ik}}} \\
+&\alpha_{ik} =  \frac{\mu_{ik}^{2} - \mu_{ik}^{3} - \mu_{ik}\sigma^{2}_{c}}{\sigma^{2}_{c}} \\
+&\beta_{ik} =  \frac{\mu_{ik}^{2} - 2\mu_{ik}^{2} + \mu_{ik}^{3} - \sigma^{2}_{c} + \mu_{i}\sigma^{2}_{c}}{\sigma^{2}_{c}} \\
+&y_{ik} \sim \textrm{Poisson} \big(g\big(\bm{\beta}, w_{s,ik}, w_{c,ik}\big)\big) \\
+&\beta_{0,k} \sim \textrm{normal} \big(h\big(\bm{\eta}, x_{r,k}\big), \sigma^{2}_{r} \big) \\
+&x_{s,ijk} \sim \textrm{lognormal} \big(\textrm{log}\big(w_{s,ik}\big), \sigma^{2}_{s}\big) \\
+& x_{c,ik} \sim \textrm{beta}\big(\alpha_{ik}, \beta_{ik}\big) \\
+\end{aligned}\quad\quad\quad
+\begin{aligned}[c]
+&\beta_{1} \sim \textrm{normal} \big(0, .001) \\
+&w_{s,ik} \sim \textrm{gamma} \big(.001, .001) \\
+&w_{c,ik} \sim \textrm{uniform} \big(0, 1) \\
+&\eta_{0} \sim \textrm{normal} \big(0, .001) \\
+&\eta_{1} \sim \textrm{normal} \big(0, .001) \\
+&\gamma_{0} \sim \textrm{normal} \big( \gamma_{0,mean}, \gamma_{0,prec}) \\
+&\gamma_{1} \sim \textrm{normal} \big( \gamma_{1,mean}, \gamma_{1,prec}) \\
+&\sigma_{s} \sim \textrm{uniform} \big(0, 100) \\
+&\sigma^{2}_{c} \sim \textrm{gamma} \big(\sigma^{2}_{c,\alpha},\sigma^{2}_{c,\beta}\big)\\
+&\sigma_{r} \sim \textrm{uniform} \big(0, 100) \\
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset VSpace 10mm
+\end_inset
+
+ See appendix to understand how we determined the numerical priors on 
+\begin_inset Formula $\gamma_{0}$
+\end_inset
+
+, 
+\begin_inset Formula $\gamma_{1}$
+\end_inset
+
+, and 
+\begin_inset Formula $\sigma^{2}_{c}$
+\end_inset
+
+. 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsubsection*
+
+Appendix
+\end_layout
+
+\begin_layout Standard
+
+After convergence, select 
+\begin_inset Formula $t=1,2,...,T$
+\end_inset
+
+ samples from the MCMC chains for 
+\begin_inset Formula $\gamma_{0}$
+\end_inset
+
+, 
+\begin_inset Formula $\gamma_{1}$
+\end_inset
+
+, and 
+\begin_inset Formula $\sigma^{2}_{c}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+&\theta^{t}_{\gamma_{0},t} \sim \big[\gamma_{0} \mid \bm{x_{c}} \big] \\
+&\theta^{t}_{\gamma_{1},t} \sim \big[\gamma_{1} \mid \bm{x_{c}} \big] \\
+&\theta^{t}_{\sigma^{2}_{c},t} \sim \big[\sigma^{2}_{c} \mid \bm{x_{c}} \big] \\
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset VSpace 5mm
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+Now approximate the means and variances of each of these chains. 
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+& \gamma_{0,mean} = \frac{1}{T}\sum^{T}_{t=1}\theta^{t}_{\gamma_{0}} \approx \textrm{E}\big[\theta^{t}_{\gamma_{0}} \big]\\
+& \gamma_{1,mean} = \frac{1}{T}\sum^{T}_{t=1}\theta^{t}_{\gamma_{1}} \approx \textrm{E}\big[\theta^{t}_{\gamma_{1}} \big]\\
+& \sigma^{2}_{c,mean} = \frac{1}{T}\sum^{T}_{t=1}\theta^{t}_{\sigma^{2}_{c}} \approx \textrm{E}\big[\theta^{t}_{\sigma^{2}_{c}} \big]\\
+\end{aligned}\quad\quad\quad
+\begin{aligned}[c]
+& \gamma_{0,var} = \frac{1}{T}\sum^{T}_{t=1}\big(\theta^{t}_{\gamma_{0}}-\gamma_{0,mean}\big)^{2} \approx \textrm{E}\big[\big(\theta^{t}_{\gamma_{0}}- \textrm{E}\big[\theta^{t}_{\gamma_{0}} \big]\big)^{2}\big]\\
+& \gamma_{1,var} = \frac{1}{T}\sum^{T}_{t=1}\big(\theta^{t}_{\gamma_{1}}-\gamma_{1,mean}\big)^{2} \approx \textrm{E}\big[\big(\theta^{t}_{\gamma_{1}}- \textrm{E}\big[\theta^{t}_{\gamma_{1}} \big]\big)^{2}\big]\\
+& \sigma^{2}_{c,var} = \frac{1}{T}\sum^{T}_{t=1}\big(\theta^{t}_{\sigma^{2}_{c}}-\sigma^{2}_{c,mean}\big)^{2} \approx \textrm{E}\big[\big(\theta^{t}_{\sigma^{2}_{c}}- \textrm{E}\big[\theta^{t}_{\sigma^{2}_{c}} \big]\big)^{2}\big]\\
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset VSpace 5mm
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+Lastly, for 
+\begin_inset Formula $\gamma_{0}$
+\end_inset
+
+ and 
+\begin_inset Formula $\gamma_{1}$
+\end_inset
+
+ convert the standard deviations to precisions, and for 
+\begin_inset Formula $\sigma^{2}_{c}$
+\end_inset
+
+ we moment match to the 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ and 
+\begin_inset Formula $\beta$
+\end_inset
+
+ parameters in a gamma distribution.
+\end_layout
+
+\begin_layout Standard
+
+
+\begin_inset Formula \begin{equation*}
+\begin{aligned}[c]
+& \gamma_{0,prec} = \frac{1}{\gamma_{0,var}} \\
+& \gamma_{1,prec} = \frac{1}{\gamma_{1,var}} \\
+\end{aligned}\quad\quad\quad
+\begin{aligned}[c]
+& \sigma^{2}_{c,\alpha} = \frac{\big(\sigma^{2}_{c,mean}\big)^{2}}{\big(\sigma^{2}_{c,var}\big)^{2}} \\
+& \sigma^{2}_{c,\beta} = \frac{\sigma^{2}_{c,mean}}{\big(\sigma^{2}_{c,var}\big)^{2}}
+\end{aligned}
+\end{equation*}
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+fi
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\end_body
+\end_document

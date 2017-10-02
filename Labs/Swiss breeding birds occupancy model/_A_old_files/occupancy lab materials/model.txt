@@ -1,0 +1,47 @@
+
+      model { 
+      	
+      	#taus for dnorm can be larger than ususal because predictors are standarized 
+                     
+       p~dunif(0,1)
+       b0 ~ dnorm(0,.0001)  
+       b1 ~ dnorm(0,.0001) 
+       b2 ~ dnorm(0,.0001) 
+       b3 ~ dnorm(0,.0001)
+       #notice that these give almost identical results and are probably more defensible
+       # p0 ~ dunif(0,1)   
+       # b0 <- logit(p0)
+       # b1 ~ dnorm(0,1/2.25^2) 
+       # b2 ~ dnorm(0,1/2.25^2) 
+       # b3 ~ dnorm(0,1/2.25^2) 
+        
+        #find probablility of occupancy at the average elevation and forest cover
+        logit(psi0) <- b0
+            for(i in 1:length(y)){ 
+           		z[i] ~ dbin(psi[i],1)      
+          		logit(psi[i]) <- b0 + b1*elev[i] + b2*elev2[i] + b3*forest[i] 
+           		y[i] ~ dbin(z[i]*p,n[i])  
+           		y.new[i] ~  dbin(z[i]*p,n[i])  
+         } 
+        #posterior predictive checks
+         mean.y<-mean(y[])
+         mean.y.new<-mean(y.new[])
+         p.value.mean<-step(mean.y.new-mean.y)
+         sd.y<-sd(y[])
+         sd.y.new<-sd(y.new[])
+         p.value.sd<-step(sd.y.new-sd.y)
+              
+        
+       #estimate optimum elevation at mean forest cover for  scaled values
+       elev.xc<- -(1/2)*b1/b2
+       #back transform to get elevation in meters
+       elev.opt <- elev.xc *sd.elev + mu.elev
+       for(j in 1:length(elev.x)){
+       	logit(psi.elev[j]) <- b0 + b1*(elev.x[j]-mu.elev)/sd.elev + b2*((elev.x[j]-mu.elev)/sd.elev)^2
+		}
+     
+      }#end of model
+
+      
+
+

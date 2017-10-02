@@ -1,0 +1,473 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+\makeatother
+\usepackage{graphicx}
+\usepackage{lineno,setspace}
+%\linenumbers
+\usepackage[small,compact]{titlesec}
+\usepackage[small,it]{caption}
+%\addtolength{\textfloatsep}{-20mm}
+%\doublespace
+\addtolength{\belowcaptionskip}{-3mm}
+\addtolength{\abovecaptionskip}{-3mm}
+\usepackage{enumitem} % load the package
+\usepackage{bm}
+\usepackage{calc}
+\usepackage{rotating}
+
+\DeclareMathOperator{\dbin}{binomial}
+\DeclareMathOperator{\dpois}{Poisson}
+\DeclareMathOperator{\dnorm}{normal}
+\DeclareMathOperator{\dlnorm}{lognormal}
+\DeclareMathOperator{\dgamma}{gamma}
+\DeclareMathOperator{\dunif}{uniform}
+\DeclareMathOperator{\dmultinom}{multinomial}
+\DeclareMathOperator{\dbeta}{beta}
+\DeclareMathOperator{\ddirch}{Dirichlet}
+\DeclareMathOperator{\dbern}{Bernoulli}
+
+
+
+\addtolength{\intextsep}{-3mm}
+\usepackage{fancyheadings}
+\pagestyle{fancy}
+\lhead{Bayesian modeling for ecologists}
+\rhead{May 20-29, 2015}
+\chead{Occupancy modeling}
+
+\usepackage{url}
+%\usepackage[tablesfirst,notablist]{endfloat}
+\end_preamble
+\use_default_options false
+\begin_modules
+sweave
+\end_modules
+\maintain_unincluded_children false
+\language american
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 11
+\spacing double
+\use_hyperref false
+\papersize letterpaper
+\use_geometry true
+\use_amsmath 2
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine natbib_authoryear
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1in
+\topmargin 1in
+\rightmargin 1in
+\bottommargin 1in
+\footskip 1cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Section*
+
+\series bold
+\lang english
+Occupancy Modeling in JAGS
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+
+\lang english
+Using a more informative prior on betas (variance = 2.25) works gives identical
+ results to the .0001 precision prior.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection*
+
+\lang english
+Modeling the spatial distribution of a species
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+
+\lang english
+Courtesy of Royle, J.
+ A., and R.
+ M.
+ Dorazio.
+ 2008.
+ Hierarchical Modeling and Inference in Ecology: The Analysis of Data from
+ Populations, Metapopulations, and Communities.
+ Academic Press, London, UK.
+ 
+\end_layout
+
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+A fundamental question in landscape ecology seeks to understand how landscape
+ structure shapes variation in the abundance of species.
+ We will use data from the Swiss Survey of Common Breeding Birds to model
+ habitat occupancy by a common, resident bird in the Swiss Alps, the willow
+ tit (
+\emph on
+Parus montanus).
+
+\emph default
+ The data come from annual surveys of one km
+\begin_inset Formula $^{2}$
+\end_inset
+
+ quadrats distributed across Switzerland.
+ Surveys are conducted during the breeding season on three separate days,
+ but some quadrats have missing data so that the number of replicate observation
+s is fewer than three.
+ During each survey, an observer records every visual or acoustic detection
+ of a breeding species and marks its location using a global positioning
+ system or, in earlier years, a paper map.
+ Because we are observing a resident species during the breeding season,
+ we assume that the true state (occupied or unoccupied) does not change
+ among sample dates.
+ Occupancy data are found in the file 
+\family typewriter
+wtmatrix.csv.
+ 
+\family default
+I included some code in the R template to summarize the number of visits
+ and the number of detections.
+ to save you some time.
+ I would be worth it to study the 
+\family typewriter
+apply()
+\family default
+function I used to do this.
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+
+\lang english
+The original data(
+\family typewriter
+wtmatrix.csv
+\family default
+) are also included in the zip file.
+ There are a couple of cool 
+\family typewriter
+apply( )
+\family default
+ tricks in the R code that were used to obtain the number of visits and
+ the number of detections.
+ It would be worth understanding these, but I didn't want you to spend an
+ hour figuring out how to do this.
+ Manipulating data is not the point of this lab.
+\end_layout
+
+\end_inset
+
+ in the file 
+\family typewriter
+Swiss BB data.csv
+\family default
+.
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+We want to understand the influence of forest cover and elevation on the
+ distribution of the willow tit.
+ We have data on the number of times a quadrat was searched (
+\family typewriter
+number_visits
+\family default
+) and the number of times the species was detected (
+\family typewriter
+number_detected
+\family default
+).
+ We have data on forest canopy cover (% closure, column 
+\family typewriter
+forest
+\family default
+) as well as elevation in meters (column 
+\family typewriter
+elev
+\family default
+) for each quadrat.
+ 
+\end_layout
+
+\begin_layout Standard
+
+\emph on
+\lang english
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\lang english
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+center
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename Willow tit.pdf
+	width 40col%
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename Map.png
+	width 40col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\lang english
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\lang english
+The willow tit (left) is one of 70 bird species that are surveyed annually
+ for abundance in 267 1-km
+\begin_inset Formula $^{2}$
+\end_inset
+
+ sampling units distributed across Switzerland (right).
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+bigskip
+\end_layout
+
+\end_inset
+
+ The challenge in these data is that failure to observe the bird can mean
+ two different things: the bird was truly absent from the quadrat or the
+ bird was present and unobserved.
+ It follows that we must estimate the probability that the bird is present
+ and the probability that we would detect the bird given that it is present.
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+Develop a model of the influence of forest cover and elevation on the distributi
+on of willow tits.
+ Your model should allow estimation of the optimum elevation of willow tit
+ habitat at the mean forest cover.
+ Diagram the network of knowns and unknowns.
+ Write out a mathematical expression for the posterior and the joint distributio
+n of the data and the parameters.
+ Estimate the posterior distributions of the model parameters using JAGS.
+ Check chains for convergence.
+ 
+\lang american
+Conduct and interpret posterior predictive checks using the mean and standard
+ deviation as test statistics.
+ 
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+What can you conclude about the relative importance of elevation and forest
+ cover in controlling the bird's distribution? Plot the probability of occupancy
+ as function of elevation at the mean of forest cover.
+ Estimate the posterior distribution of a derived parameter, the optimum
+ elevation of the habitat for the bird at the mean forest cover.
+ Your plots should resemble Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Probability-of-occupancy"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\lang english
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+center
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Graphics
+	filename Bird plots.pdf
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\lang english
+\begin_inset Caption
+
+\begin_layout Plain Layout
+
+\lang english
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Probability-of-occupancy"
+
+\end_inset
+
+Probability of occupancy at the mean forest cover as a function of elevation
+ (left panel) and the posterior density for the optimum elevation at the
+ mean forest cover (right panel).
+ Dashed give are .025 and .975 quantiles, also known as .95 equal-tailed Bayesian
+ credible intervals.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+You will need to standardize the covariates by subtracting the mean and
+ dividing by the standard deviation for each observation in the elevation
+ and forest cover data.
+ A handy function for doing this is: 
+\family typewriter
+elev<-as.vector(scale(obs[,"elev"],center=TRUE)) 
+\family default
+where 
+\family typewriter
+obs[,"elev"]
+\family default
+ is the unstandardized elevation data in meters.
+ One more coding tip---you 
+\emph on
+must
+\emph default
+ give initial values of 1 to all unknown 0 or 1 states.
+\end_layout
+
+\end_body
+\end_document

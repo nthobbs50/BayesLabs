@@ -1,12 +1,12 @@
 <style>
 
 /* uncomment out this to generate exercise */
- .hider {display: none;}  
- .hider2 {display: inline;} 
+.hider {display: none;}  
+.hider2 {display: inline;} 
 
 /* uncomment out this to generate key */
-/* .hider {display: inline;}  
-/* .hider2 {display: none;}  
+#.hider {display: inline;}  
+#.hider2 {display: none;}  
 
 </style>
 
@@ -27,10 +27,10 @@ output: html_document
 bibliography: bib.bib
 ---
 
-<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:250px;height=250px" />
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:150px;height=150px" />
 
 ### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
-#### Metropolis Hastings Lab
+#### Metropolis-Hastings Lab
 #### `r format(Sys.Date(), format="%B %d, %Y")`
 
 - - -
@@ -121,7 +121,7 @@ Below we have summarized the series of and we refer to all unobserved quantities
 
 1. The chain for the parameter is defined as $\textbf{x}$ of length $n$. The first element in the $\mathbf{x}$ vector $\big(x_{1}\big)$ is known because we assign it with the initial conditions. Although not usually a critical decision, it is important to pick something that is clearly within the support---for example a negative integer for a parameter representing a survival probability would be a strange choice. 
 
-2. We need a proposal distribution, from which we will draw new **potential** values of $x$. A proposal distribution is defined as: $$\big[z \mid x_{i}, \sigma \big] \textrm{,}$$ a probability density function for continuous parameters (or a probability mass function for discrete parameters) specifying the distribution for the new value $z$, conditional on the current value of $x$, and a tuning parameter, $\sigma$ (Note: for the Metropolis algorithm to work, these distributions must be symmetric). The tuning parameter optimizes for efficiency (how quickly the chain samples the parameter's posterior distribution). Most likely, even if your tuning parameter is defined sub-optimally everything will work (eventually). How we choose values for $\sigma$ will be discussed later. The mean of the proposal distribution is centered on the current $x_{i}$ value---remember you may need to translate the mean and $\sigma$ into shape parameters appropriate for the proposal distribution. In summary, the mean of the proposal distribution is $x_{i}$, and the parameter $\sigma$ determines how close the proposed new value, $z$, is likely to be to $x_{i}$. 
+2. Define $x_i$ as the value of the unobserved quantity $x$ at the $i^{th}$ iteration of the MCMC algorithm.  (Note that this notation departs from the notation used in Hobbs and Hooten and in lecture where the unobserved quantity was notated as $\theta$ and the value of theta at a specific iteration was $\theta^k$.) We need a proposal distribution, from which we will draw new **potential** values of $x$. A proposal distribution is defined as: $$\big[z \mid x_{i}, \sigma \big] \textrm{,}$$ a probability density function for continuous parameters (or a probability mass function for discrete parameters) specifying the distribution for the new value $z$, conditional on the current value of $x$, and a tuning parameter, $\sigma$ (Note: for the Metropolis algorithm to work, these distributions must be symmetric). The tuning parameter optimizes for efficiency (how quickly the chain samples the parameter's posterior distribution). Most likely, even if your tuning parameter is defined sub-optimally everything will work (eventually). How we choose values for $\sigma$ will be discussed later. The mean of the proposal distribution is centered on the current $x_{i}$ value---remember you may need to translate the mean and $\sigma$ into shape parameters appropriate for the proposal distribution. In summary, the mean of the proposal distribution is $x_{i}$, and the parameter $\sigma$ determines how close the proposed new value, $z$, is likely to be to $x_{i}$. 
 
 <br>
 <div style="width:800px; margin:0 auto;">

@@ -1,0 +1,374 @@
+<style>
+
+/* uncomment out this to generate exercise */
+.hider {display: none;} 
+
+/* uncomment out this to generate key */
+#.hider {display: inline;}
+
+</style>
+
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:150px;height=150px" />
+
+
+```{r echo=FALSE}
+rm(list=ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE, messages = FALSE)
+evalSwitch = FALSE
+echoSwitch = FALSE
+```
+
+
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+
+
+
+
+### Dynamic Models: Forecasting Effects of Harvest on Lynx
+
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+<br>
+
+ 
+### Problem
+The Eurasian lynx (*Lynx lynx*) is a medium-sized predator with broad distribution in the boreal forests of Europe and Siberia. The lynx is classified as a threatened species throughout much of its range. In Sweden, there is controversy about legal harvest of lynx. Proponents of harvest argue that allowing hunting of lynx reduces illegal kill (poaching). Moreover, Sweden is committed to regulate lynx numbers to prevent excessive predation on reindeer because reindeer are critical to the livelihoods of indigenous pastoralists, the Sami. In contrast, many environmentalists argue that the species is simply too rare to lift its fully protected status. A similar controversy surrounds management of wolves in the Western United States.
+
+<img src="Reindeer.png" style="float: left; width: 49%; margin-right: 1%; margin-bottom: 0.5em;">
+<img src="Lynx-01.png" style="poistion: left;width: 49%; margin-right: 1%; margin-bottom: 0.5em;"> 
+
+<p style="clear: both;">
+
+
+Your task is to help resolve this controversy by developing a forecasting model for the abundance of lynx in a management unit in Sweden. You have data on the number of lynx family groups censused in the unit as well as  annual records of the number of lynx harvested from the unit. You will model the population using the deterministic model: $$N_t=\lambda(N_{t-1}-H_{t-1}).$$
+where $N_{t}$
+  is the true, unobserved abundance of lynx and $H_{t-1}$
+  is the number of lynx harvested during $t-1$
+  to $t$.
+The parentheses in this expression reflect the fact that harvest occurs immediately after census, such that the next years population increment comes from the post-harvest population size. (For the population ecologists: What would be the model if harvest occurred immediately before census? Three months after census? Continuously throughout the year?) 
+<div class="hider">
+*Immediately before census:
+
+$$N_t=\lambda N_{t-1}-H_{t-1}.$$
+*Three months after census:
+
+$$N_t=(\lambda^{\frac{1}{4}}N_{t-1}-H_{t-1})\lambda^{\frac{3}{4}}$$
+$$N_t=(\lambda^{\frac{1}{4}}N_{t-1}-H_{t-1})\lambda^{\frac{3}{4}}$$
+*Throughout the year:
+$$N_t=(\lambda^{\frac{1}{2}}N_{t-1}-H_{t-1})\lambda^{\frac{1}{2}}$$
+$$N_t=\lambda N_{t-1}-\lambda^{\frac{1}{2}}H_{t-1}$$
+</div>
+
+<br>
+We can reasonably assume the harvest is observed without error.  It may be a bit of a stretch to assume an that observations of $N_t$ are made perfectly, but my Swedish colleagues have convinced me that their census method, snow tracking, does a good job of estimating the number of family groups (if not the number of lynx) in a management region. 
+
+The challenge in this problem is that the observations of lynx abundance (family groups) is not the same as the observation of harvest (number of lynx). Fortunately, you have prior information on the proportional relationship between number of family groups and number of lynx in the population, i.e, $$\phi=\frac{f}{N}$$
+where $f$  is the number of family groups and $N$  is the population size, mean $\phi$=.163 with standard deviation of the mean = .012. 
+
+1. Develop a hierarchical Bayesian model (also called a state space model) of the lynx population in the management unit. Diagram the Bayesian network of knowns and unknowns and write out the posterior and factored joint distribution. 
+
+2. Write JAGS code to approximate the marginal posterior distribution of the unobserved, true state over time ($\mathbf{N}$), the parameters in the model $\lambda$ and $\phi$ as well as the process variance and observation variance. 
+
+3. Check all posterior distributions for convergence. 
+
+4. Conduct posterior predictive checks by simulating a new dataset for family groups ($f_t$) at every MCMC iteration. Calculate a Bayesian p value using the sums of squared discrepancy between the observed and the predicted number of family groups based on observed and simulated data,
+$$T^{observed}	=	\sum_{t=1}^{n}(f_{t}^{observed}-N_{t}\phi)^{2}
+\\T^{model}	=	\sum_{t=1}^{n}(f_{t}^{simulated}-N_{t}\phi)^{2}.$$
+The Bayesian p value is the proportion of MCMC iterations for which $T^{model}>T^{obs}$.
+
+5. Assure that your process model accounts adequately accounts for temporal autocorrelation in the data.  To do this, include a derived quantity $$e_t=y_t-N_t$$ in your JAGS code and JAGS object.  Use the acf_test function below to decide if you need to model the temporal covariance.
+
+6. Plot the median number of lynx family groups over time (1998-2016) including credible intervals.  Overlay the data on this plot.  The last year of your plot will be a forecast. Your plot should resemble Figure 1, below. Make a make a forecast one year into the future assuming five harvest levels (0, 10, 25, 50, and 75 animals) during 2016. Environmentalists and hunters have agreed on a acceptable range for lynx abundance in the unit, 26-32 family groups. Compute the probability that the population is below, within, and above this range for 2016. Tabulate these values.
+
+A note about the data. Each row in the data file gives the observed number of family groups for that year in column 2 and that year's harvest in column 3.  The harvest in each row influences the population size in the next row.  
+
+A couple of hints, ignored at your peril. Use a lognormal distribution to the true lynx population size over time. Use a Poisson distribution for the data model relating the true, unobserved state (the total population size) to the observed data (number of family groups). 
+
+An alternative approach, which is somewhat more difficult to code, is to model the process as $\text{negative binomia}(N_t|\lambda(N_{t-1}-H_{t-1}, \rho))$ and model the data as $\text{binomial}(y_t|N_t,\phi)$.  Explain why this second formulation *might* be better than the formulation you are using. (It turns out they give virtually identical results.)
+
+<div class="hider">
+There are two advantages to the negative binomial process model and binomial data model. A negative binomial process model treats the true state as an integer, which for small populations like this one, has some advantages because it includes demographic stochasticity.  The binomial data model assure that the observed state is never larger than the true state, which makes sense if the only source of error in the census is failing to observe family that are present.  On the other hand, if there is a possibility of double-counting, which is the case here, the then Poisson is a better choice for the data model.
+</div>
+
+### Code
+####Preliminaries
+```{r}
+
+library(rjags)
+y=read.csv("Lynx data new.csv")
+# Levels of  Harvest to evaluate relative to goals for forecasting part.
+h=c(0, 10, 25, 50, 75)
+#Function to get beta shape parameters from moments
+shape_from_stats <- function(mu = mu.global, sigma = sigma.global){
+		 a <-(mu^2-mu^3-mu*sigma^2)/sigma^2
+		 b <- (mu-2*mu^2+mu^3-sigma^2+mu*sigma^2)/sigma^2
+		shape_ps <- c(a,b)
+		return(shape_ps)
+}
+
+#get parameters for distribution of population multiplier, 1/p
+shapes=shape_from_stats(.163,.012)
+#check prior on p using simulated data from beta distribution
+x = seq(0,1,.001)
+p=dbeta(x,shapes[1],shapes[2])
+plot(x,p,typ="l",xlim=c(.1,.3))
+
+```
+
+### Simulate data for initial values and model verification
+
+I almost always simulate the true state by choosing some biologically reasonable values for model parameters and "eyballing" the fit of the true state to the data.  I then use these simulated values for initial conidtions as you can see in the `inits` list below. This is particularly important. Failing to give reasonable initial conditions for dynamic models can cause no end of problems in model fitting. Remember, you must have initial conditions for *all* unobserved quantities in the posterior distribution.  It is easy to forget this because some of these quantiies don't have priors.  
+
+```{r}
+##visually match simulated data with observations for initial conditions
+#visually match simulated data with observations for initial conditions
+endyr = nrow(y)
+n=numeric(endyr+1)
+mu=numeric(endyr+1) #use this for family groups
+lambda=1.1
+sigma.p=.00001
+n[1] = y$census[1]
+
+for(t in 2: (endyr+1)){
+	n[t] <- lambda*(y$census[t-1] - .16 * y$harvest[t-1])  #use this for family groups
+	}
+plot(y$year, y$census,ylim=c(0,100),xlab="Year", ylab="Population size", main="Simulated data")
+lines(y$year,n[1:length(y$year)])
+```
+
+
+### Function for evaluating auto-correlation.
+This function requires  the number of iterations to be used to calcualte medians and credible intervals (n), an JAGS object containingresiduals at each time step(jags_object) and the length of the time series (n_ts).
+```{r}
+# The acf_test function obtains the posterior distribution of the autocorrelation function for residuals in a time series.  The dotted blue vertical lines in the plot are the .025 and .975 quantiles of the ACF value and the black bars give the medians. You must have a jags object with 3 chains. Quantities in the function template are n, the number of MCMC iterations used to find the posterior of ACF, jags_object, the name of the object contaning the residuals, and ts_n, the number of years in the time series.
+
+
+acf_test = function(n, jags_object,ts_n){
+acf.dat=NULL
+
+
+
+#get n samples from MCMC output
+for(i in 1:n){
+z1=acf(jags_object[1:ts_n,i,1],plot=FALSE)$acf
+z2=acf(jags_object[1:ts_n,i,2],plot=FALSE)$acf
+z3=acf(jags_object[1:ts_n,i,3],plot=FALSE)$acf
+acf.dat=rbind(acf.dat,z1,z2,z3)
+}
+#setting index at 11 produces 10 lags
+q=matrix(nrow=11, ncol=3)
+for(j in 1:11)q[j,] = quantile(acf.dat[,j],c(.025,.5,.975))
+acf(q[,2], main="", lwd=3, ci=0)
+lag=seq(0,10)
+
+lines(lag,q[,1], typ="h",lty="dotted", col="black", lwd=1)
+lines(lag,q[,3], typ="h",lty="dotted", col="black", lwd=1)
+
+abline(h=0,col="blue")
+legend(6, .8, legend = c("Median acf","95%  BCI"), lty=c("solid","dashed"), lwd=c(3,1), col=c("black","blue"), bty="n")
+
+acf.out=q
+return(acf.out)
+} #end of acf function
+
+```
+
+
+### Initial values and data
+```{r}
+
+
+#Data for JAGS
+data = list(
+	y.endyr = endyr,
+	y.a=shapes[1], 
+	y.b=shapes[2],
+	y.H=y$harvest,
+	y=y$census,
+	h=h
+)
+
+inits = list(
+	list(
+	lambda = 1.2,
+	sigma.p = .01,
+	N=n
+	),
+	list(
+	lambda = 1.01,
+	sigma.p = .2,
+	N=n*1.2),
+	list(
+	lambda = .95,
+	sigma.p = .5,
+	N=n*.5)
+	)
+```
+
+```{r eval=evalSwitch,echo=echoSwitch}
+{
+sink("Lynx Harvest JAGS from cat.R")
+cat("
+model{
+#priors==============
+sigma.p ~ dunif(0,5)
+tau.p <- 1/sigma.p^2
+lambda ~ dunif(0,10)
+p ~ dbeta(y.a,y.b)  #Get parameters a and b from mean and sd using moment matching to make this prior informative.  These are calcuated on R side and read in as data.
+
+#Informative priors on initial conditions based on first year's observation of family groups
+fg[1] ~ dpois(y[1])
+N[1]~dlnorm(log(y[1]/p),tau.p)
+
+
+#process model===============
+for(t in 2:(y.endyr + 1)){  # the last year is a forecast with known harvest data
+	mu[t] <- log(max(.0001,lambda*(N[t-1]-y.H[t-1])))
+	N[t] ~ dlnorm(mu[t], tau.p)
+	fg[t]<-N[t] * p
+	}#end of process model
+		
+#data model===============
+for(t in 2:y.endyr){   
+		 y[t] ~ dpois(p*N[t])  
+    }  #end of data model
+
+#Model checking
+for(t in 1:y.endyr){
+    #simulate new data for posterior predicitve check
+	    y.rep[t] ~ dpois(p*N[t])
+	    #accumlate test statistics for posterior predictive check
+	    sq[t] <- (y[t]-p*N[t])^2
+	    sq.rep[t] <-(y.rep[t] - p*N[t])^2
+     #compute residuals for autocorrelation check
+     e[t] <- y[t] - fg[t]
+}
+#calculate Bayesian P value
+fit <- sum(sq[])
+fit.new <- sum(sq.rep[])
+pvalue <- step(fit.new - fit)
+
+##forecast effects of different harvest regeimes on next year's number of family grops
+	for(i in 1:length(h)){
+		#mu.hat is the forecast 1 year beyond y.endyr +1, i.e., 2011
+		mu.hat[i] <- log(max(.001,lambda*(N[y.endyr+1]-h[i]))) 
+		N.hat[i] ~ dlnorm(mu.hat[i], tau.p)	#Nhat forecasts 2 years out
+		fg.hat[i] <- N.hat[i] * p
+    }
+	
+	
+} #end of model
+
+",fill=TRUE)
+sink()
+}
+```
+
+
+
+```{r, eval=TRUE, echo=echoSwitch}
+model = "Lynx Harvest JAGS from cat.R"
+
+n.update=10000
+n.iter=50000
+n.adapt=5000
+n.thin=1
+
+jm = jags.model(model,data=data,inits=inits, n.adapt=n.adapt, n.chains=length(inits))
+update(jm, n.iter=n.update)
+
+z = coda.samples(jm,variable.names=c("lambda","sigma.p","p", "N"), n.iter=n.iter, thin=n.thin)
+
+zj=jags.samples(jm,variable.names=c("N","N.hat", "fg", "fg.hat", "pvalue", "fit", "fit.new", "e"), n.iter=n.iter, thin=n.thin)
+
+```
+
+
+
+
+
+```{r,eval=evalSwitch, echo=echoSwitch}
+
+
+#check convergence
+heidel.diag(z)
+gelman.diag(z)
+
+#remove N from coda object after checking convergence to allow cleaner plotting and summaries
+z2 = z[,c("lambda","sigma.p","p"),drop=FALSE]
+summary(z2)
+plot(z2)
+#look at Bayesian P value
+zj$pvalue
+acf_values=acf_test(n=100,zj$e,ts_n=nrow(y))
+
+#Do goodness of fit plot.
+par(mfrow=c(1,1))
+plot(zj$fit.new,zj$fit, xlab = "Discrepancy observed", ylab= "Discrepancy simulated", cex=.05, xlim=c(0,3000), ylim=c(0,3000))
+abline(0,1)
+p=summary(zj$pvalue,mean)$stat
+text(500,2500, paste("Bayesian P value = ", as.character(signif(p,2))))
+```
+
+
+```{r,eval=TRUE, echo=echoSwitch}
+
+
+#Plot quantiles of the true, unobserved state vs observations and forecasts.
+par(mfrow=c(1,1))
+# +1 gives the one year forecast
+years=seq(1998,y[nrow(y),1]+1)
+fg = summary(zj$fg,quantile,c(.025,.5,.975))$stat
+y2=c(y$census, NA)
+plot(years,y2, ylim=c(0,100), ylab="Number of Lynx Family Groups", xlab="Years")
+lines(years,fg[2,])
+lines(years,fg[3,], lty="dashed")
+lines(years,fg[1,],lty="dashed")
+abline(h=26,lty="dotted", col="red")
+abline(h=32, lty="dotted", col="red")
+```
+
+Figure 1. Median population size of lynx (solid line) during 1997-2016 and forecasts for 2010 and 2011 with 95% credible intervals (dashed lines). Red dotted lines give acceptable range of number of family groups determined in public input process.
+
+
+
+```{r, eval=evalSwitch,echo=echoSwitch}
+
+# Levels of  Harvest to evaluate relative to goals for forecasting part.
+h=c(0, 10, 25, 50, 75)
+#Acceptable limits on poplation size, determined by public input process.
+lower = 26
+upper = 32
+p.in = numeric(length(h))
+p.over =numeric(length(h))
+p.under = numeric(length(h))
+
+#calculate probability of meeting goals
+for(j in 1:length(h)){
+	p1 = ecdf(zj$fg.hat[j,,])(upper)
+	p.under[j] = ecdf(zj$fg.hat[j,,])(lower)
+	p.in[j] = p1 - p.under[j]
+	p.over[j] = 1-p1
+}
+
+#trim to reasonable signficiant digits
+p.under=signif(p.under,2)
+p.in=signif(p.in,2)
+p.over=signif(p.over,2)
+
+alt.table = as.data.frame(cbind(h,p.under,p.in,p.over))
+names(alt.table)=c("Harvest", "P(under)", "P(in)", "P(over)")
+alt.table
+#save(alt.table, file="Harvest table.Rdata")
+```
+
+ 

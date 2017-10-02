@@ -1,0 +1,436 @@
+
+<style>
+
+/* uncomment out this to generate exercise */
+# .hider {display: none;}  
+# .hider2 {display: inline;} 
+
+/* uncomment out this to generate key */
+ .hider {display: inline;}  
+ .hider2 {display: none;}  
+
+</style>
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:150px;height=150px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Modeling a continuous spatial process 
+#### using simulated data for Utah
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+#### Table of Contents
+
+<br>
+
+[I. Motivation][]
+
+[II. Problem][]
+
+[III. Preliminaries][]
+
+
+
+
+
+
+```{r preliminaries, include = FALSE, cache=TRUE}
+rm(list=ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE, messages = FALSE)
+
+# uncomment out this to generate key
+ nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+ #nokey = TRUE; key = FALSE
+```
+
+<br>
+
+
+#### I. Motivation
+We have studied a variety of data sets thus far that included observations of responses and accompanying predictor variables for each response. We have ignored the fact that these observations must occur *somewhere*. However, many, if not most, research problems in environmental and social science are spatial. The usual  layout for these data sets is that each row (aka record, or for the truly ancient among you -- aka *card*) contains a response and predictor variables (aka covariates). Spatial data sets have these of course, but each row also contains geographic coordinates --- usually latitude and longitude or, better, utm's giving each observation at a specific location in space.  
+
+Why do we care?  Remember a fundamental assumption of virtually all statistical modeling,
+\begin{align}
+y_i&= g(\boldsymbol{\theta},\mathbf{x}_i)+\epsilon_i \\
+\epsilon_i &\sim \text{independent and identically distributed.}
+\end{align}
+We have some deterministic model $g(\boldsymbol{\theta}, \mathbf{x}_i)$ that predicts an observation $y_i$ with some error $\epsilon_i$. The errors must be independent, which is to say that information about one $\epsilon_i$ tells you nothing about another.  Recall we can combine the likelihoods of individual observations into a total likelihood across an observation set by taking a product of the individual likelihoods, if we can assume independence.  The assumption of independence means that the $\epsilon_i$ must be independent. 
+
+It is often the case that observations that are close together in space are more similar than observations that are farther apart.  This is not a problem if our model accounts for this relationship by the clever use of spatial covariates, but sometimes covariates cannot account for all the spatial dependence in the data, leaving $\epsilon$s that resemble their neighbors. This means that $\epsilon$s that are close together are conditional, which is to say of course that information about one $epsilon$ informs us to some degree about its neighbors.  Another way to express this conditional relationship is that $\epsilon$s are *autocorrelated*. It is vital that you understand that this is different from auto correlation in the *data*, which will almost always be present at some scale.
+
+The Bayesian framework does not flinch at autocorrelated $\epsilon$s.  We deal with spatially conditional residuals in precisely the same way we deal with all other unobserved quantities:  we model them.
+
+We have learned about two types of spatial data -- data like observations of soil moisture or disease prevalence arising from a continuous spatial process and data like average income or political affiliation that reflect an area -- a state, county, or precinct.  We will focus on continuous spatial data here, but the approach is not dramatically different for areal data.
+
+#### II. Problem
+The best way to learn new modeling skills involves three steps:
+
+1. Understand the math. Understand the math.  Understand the math.
+
+2. Simulate data so that you *know* the values of generating, unobserved quantities.
+
+3. Write code to implement the mathematics using the simulated data.  
+
+Step 1 was handled in the lecture on spatial modeling and your deep thoughts about the topic. We will go through step two and three in this problem.
+
+#### III. Preliminaries: computing a spatial grid for Utah
+Utah has great canyon country, decent breweries in Moab, the Uinta mountains, and some of the driest, deepest powder anywhere. You can get on a bus in downtown Salt Lake and be at the base of Alta in about 45 minutes.  It is also the state where Mevin Hooten was on the faculty at Utah State University before he joined us a Colorado State.  Mevin developed much of this exercise, explaining why it is about Utah, but I actually prefer the powder explanation.  You could easily modify to any state of your choosing, but rectangular ones work better than Massachusetts.
+
+You will need to load the following libraries for this problem. If they are not installed on your computer, please install them. 
+```{r}
+library(geoR)
+library(maps)
+library(mvtnorm)
+library(rjags)
+library(spBayes)
+library(rgdal)
+library(maptools)
+gpclibPermit()
+```
+The code in the next block is not needed for the exercise, but the spatially inclined among you may find it useful at some point, so I included it. The code produces a spatially referenced grid of points overlaying Utah.
+
+```{r}
+par(mfrow=c(1,1))
+ut.st=map("state",regions="utah",fill=T,plot=F)
+ut.coords=cbind(ut.st$x,ut.st$y)
+#plot(ut.coords,type="b")
+ut.coords=rbind(ut.coords,ut.coords[1,])
+ut.latlon=SpatialPoints(ut.coords,proj4string=CRS("+proj=longlat +datum=WGS84"))
+str(ut.latlon)
+ut.utm=spTransform(ut.latlon,CRS("+proj=utm +zone=12  +datum=WGS84"))
+#plot(ut.utm)
+
+ut.range=ut.utm@bbox
+xg=seq(ut.range[1],ut.range[3],,25)
+yg=seq(ut.range[2],ut.range[4],,35)
+utgrid.locs=as.matrix(expand.grid(xg,yg))
+plot(utgrid.locs,pch=20,asp=1,xlab="x.utms",ylab="y.utms")
+points(ut.utm@coords,type="l",lwd=3)
+ntot=dim(utgrid.locs)[1]
+
+```
+
+You should understand what is going on from now on, with the exception of some of the plotting, which you can figure out at another time. We start by simulating some data some spatially structured covariates and a response that lacks spatial dependence except the dependence created by  the covariates. Study the code below.  Especially take note of how the $y$s are simulated.
+```{r}
+#Make some spatially structured, standarized covariates and add them to the gridded data. 
+X2=-cos(scale(utgrid.locs[,1])-.5)*cos(scale(utgrid.locs[,2]))
+X3=scale(utgrid.locs[,1])+scale(utgrid.locs[,2])
+#put the covariates together with the utms
+dat = cbind(utgrid.locs,X3)
+colnames(dat) = c("easting", "northing", "X2")
+
+#Make an unstructured response variable
+p=2
+#make a matrix of 1's with ntot rows and 3 columns
+X=matrix(1,ntot,p)
+#replace the 1's in colums 2 and 3 with the covariates. Column 1 retains the ones to represent the intercept
+X[,2]=dat[,3]
+#X[,3]=dat[,4]
+#set some coefficients
+#beta=c(1,-2,1) 
+beta=c(1,-2)
+sigma = .5
+#Simulate a vector of responses using a normal distribution.This is the same as making ntot draws from rnorm where ntot is the total number of points in the grid and X%**beta is a vector of means. 
+y=rnorm(ntot,X%*%beta,sigma)
+dat = as.data.frame(cbind(y,dat))
+```
+
+We have created a data frame called 'dat' with one response, and one covariate and a shared spatial position for each observation in utms. Data like these are usually where you will start. 
+
+```{r}
+head(dat)
+```
+
+Take a look at the data plotted as an image.  The cool colors indicate low values; the hot colors, high values.  Remember, the predictors are standardized. The responses clearly have spatial structure.  How do we know this? An image plot in the absence of spatial structure should have colors spread unpredictably across pixels as shown in the lower right panel.
+
+```{r, eval=key, echo=TRUE}
+par(mfrow=c(2,2))
+image(matrix(dat$y,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="y",asp=TRUE, xlab="Easting", ylab="Northing")
+
+image(matrix(dat$X2,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="x2",asp=TRUE,xlab="Easting", ylab="Northing")
+#ImagePlot(matrix(dat$X2,length(xg),length(yg)))
+# image(matrix(dat$X3,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="x3",asp=TRUE,xlab="Easting", ylab="Northing")
+image(matrix(rnorm(ntot,mean=1.57,sd=1.82),length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="unstructured y",asp=TRUE,xlab="Easting", ylab="Northing")
+
+```
+
+#### IV. Exercise 1: An aspatial model
+Fit an aspatial model in JAGS predicting the response ($y$) as a linear function of the covariate ($X2). Call your JAGS model `AspatialJAGS.R`. Start by using the usual `for` structure with `dnorm` for the likelihood.  Then change your model to use use matrix notation and the mutlivariate normal as described in lecture. Note that the two formulations produce identical results, but the mutivariate version is far slower.
+
+Here is the math for the multivariate version:
+\begin{align}
+\boldsymbol{\mu}&=\mathbf{X}\boldsymbol{\beta}\\
+\mathbf{y}&\sim\text{multivariate normal}(\boldsymbol{\mu},\sigma^2I)
+\end{align}
+
+A few hints. The second argument to the multivariate normal is a variance-covariance matrix, which in this case is simply a matrix with $\sigma^2$ on the diagonal and zeros elsewhere.  You will need to give JAGS an identity matrix $I$ as data using the code below. I have set up the inits and data statement for you to make life easier. It is critical that you code contains a derived quantity for the redsiduals, i.e., $\epsilon_i=y_i-\mu_i$.
+
+Spatial models take a long time to run. Computation time increases as the square of the number of data points. A useful way to work is to subset the data to reduce the number of points and use a small number of iterations until you get some reasonable if not perfect results.  Then increase the size of the data set and the number of iterations. The code below will be helpful in doing that.
+
+```{r}
+#Adjust these values to change computation time 
+#To knit the .Rmd quickly use these
+# n.adapt=5
+# n.update=10
+# n.iter=10
+# #subset the data
+# idxkeep=sort(sample(1:ntot,round(0.2*ntot)))
+
+
+
+#To start use these
+n.adapt=500
+n.update=1000
+n.iter=1000
+#subset the data
+idxkeep=sort(sample(1:ntot,round(0.2*ntot)))
+
+# # #When everything is running use these
+# idxkeep=sort(sample(1:ntot,round(0.4*ntot)))
+# n.adapt=500
+# n.update=1000
+# n.iter=1000
+
+#When you can run your code overnight, or perhaps for a day and a night, use these
+# idxkeep = seq(1:ntot)
+# n.adapt=500
+# n.update=5000
+# n.iter=3000
+
+```
+
+```{r, echo=TRUE, eval=key}
+p=length(beta)
+inits=list(
+  list(
+  beta=rep(1,p),
+  sigma=.2
+  ),
+  list(
+  beta=rep(5,p),
+  sigma=.6
+  )
+)
+
+data = list(
+  y=as.double(dat$y[idxkeep]),
+  X = X[idxkeep,],
+  y.p = p,
+  y.I = diag(length(idxkeep))
+)
+
+
+```
+
+
+```{r,eval=key,echo=key}
+#fit aspatial model
+{
+sink("AspatialJAGS.R")
+cat("
+    model{
+    for(i in 1:y.p){
+      beta[i] ~ dnorm(0,.00001)
+    }
+    sigma ~ dunif(0,5)
+    tau <- 1/sigma^2
+    #mu = X %*% beta
+    #prec.mat = inverse(sigma^2*y.I) #y.I = identity matrix
+    #y ~ dmnorm(mu,prec.mat)
+    for(i in 1:length(y)){
+      mu[i] = beta[1] + beta[2]*X[i,2]
+      y[i] ~ dnorm(mu[i], tau)
+    }
+    epsilon = y - mu
+}
+    ",fill=TRUE)
+sink()
+}
+```
+
+Get some output.  Evaluate if residuals are spatially structured.
+
+```{r,eval=key, echo = TRUE}
+
+jm_a=jags.model("AspatialJAGS.R", n.adapt = n.adapt, n.chains = 2, inits=inits, data=data)
+update(jm_a, n.iter=10000)
+zc_a = coda.samples(jm_a, variable.names=c("beta","sigma", "mu"), n.iter=10000)
+
+#Be careful.  It may appear that model is stuck because the *** freeze.  Be patient.
+zj_a =jags.samples(jm_a,variable.names=c("beta","sigma","epsilon", "mu"), n.iter=n.iter)
+summary(zj_a$beta,quantile,c(.025,.5,.975))
+summary(zj_a$sigma, quantile,c(.025,.5,.975))
+epsilon = summary(zj_a$epsilon,median,na.rm=TRUE)$stat
+n=length(idxkeep)
+par(mfrow = c(2,2))
+image(matrix(epsilon,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)))
+
+mu=summary(zj_a$mu,quantile,c(.025,.5,.975))$stat
+plot(data$X[,2],data$y, pch=19, cex=.5, xlab="X2", ylab="y")
+lines(data$X[,2],mu[2,],col="red")
+lines(data$X[,2],mu[1,],col="blue", lty="dashed")
+lines(data$X[,2],mu[3,],col="blue", lty="dashed")
+#compute distance matrix
+D=as.matrix(dist(utgrid.locs))
+utgrid.sm.locs=utgrid.locs[idxkeep,]
+epsilon.gd=as.geodata(cbind(utgrid.sm.locs,epsilon))
+epsilon.v=variog(epsilon.gd,max.dist=max(D))
+plot(epsilon.v)
+#no spatial strcuture in the residuals
+
+```
+
+#### IV. Exercise 2: An aspatial model fit to spatially structured data
+
+We now want to add spatial structure into that is not accounted for by the covariates.  Study the code below until you understand it. You may need to refer to the lecture notes.
+
+```{r, eval=key, ech=TRUE}
+D=as.matrix(dist(utgrid.locs))
+s2=2
+phi=1.5*10^-5
+Sigma=s2*exp(-D*phi)
+par(mfrow = c(2,2))
+plot(seq(0,max(D),,20),s2*exp(-seq(0,max(D),,20)*phi),type="o",ylab="cov",xlab="distance")
+
+set.seed(13)
+#get a vector of epsilons. rmvnorm returns  a single  vector of length n.tot centered on 0. Sigma is calculated above to reflect spatial autocorelation.
+eps=as.vector(rmvnorm(1,matrix(0,ntot,1),Sigma,method="chol"))     # may take some time
+
+#Create spatially  structured data by adding 0 centered, spatially structured random variables to the unstructured y.
+dat$y_structured = dat$y+eps
+image(matrix(eps,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)), main=expression(epsilon))
+image(matrix(dat$y_structured,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="Structured y")
+
+
+```
+
+Now fit the *aspatial* model to the spatially structured data.  Be sure to examine the coefficients. What do you conclude?  Is there evidence for autocorrelation?
+
+```{r, eval=key, echo=TRUE}
+#refit aspatial model with structured data
+data = list(
+  y=as.double(dat$y_structured[idxkeep]),
+  X = X[idxkeep,],
+  y.p = p,
+  y.I = diag(length(idxkeep))
+)
+jm_a2=jags.model("AspatialJAGS.R", n.adapt = n.adapt, n.chains = length(inits), inits=inits, data=data)
+#zc_a = coda.samples(jm_a, variable.names=c("beta","sigma"), n.iter=1000)
+
+update(jm_a2,n.iter=n.update)
+
+zj_a2 =jags.samples(jm_a2,variable.names=c("beta", "epsilon", "sigma"), n.iter=n.iter)
+par(mfrow=c(2,2))
+eps=summary(zj_a2$epsilon,median)$stat
+ image(matrix(eps,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main="Structured y")
+epsilon = summary(zj_a2$epsilon,median)$stat
+n=length(idxkeep)
+utgrid.sm.locs=utgrid.locs[idxkeep,]
+epsilon.gd=as.geodata(cbind(utgrid.sm.locs,epsilon))
+epsilon.v=variog(epsilon.gd,max.dist=max(D/4))
+plot(epsilon.v)
+legend(75000,1,c("Fit", "Generating"),pch=c(1,19), bty="n", cex=.75)
+lines(epsilon.v$uvec,s2-s2*exp(-epsilon.v$uvec*phi),type="o",pch=20)
+
+summary(zj_a2$beta,quantile,c(.025,.5,.975))
+summary(zj_a2$sigma,quantile, c(.025,.5,.975))
+mu=summary(zj_a$mu,quantile,c(.025,.5,.975))$stat
+
+plot(data$X[,2],data$y, pch=19, cex=.5)
+lines(data$X[,2],mu[2,],col="red")
+lines(data$X[,2],mu[1,],col="blue", lty="dashed")
+lines(data$X[,2],mu[3,],col="blue", lty="dashed")
+```
+
+#### IV. Exercise 2: An spatial model fit to spatially structured data
+
+Modify the aspatial model to account for spatial dependence in the residuals. Call the new model `SpatialJAGS.R`. How many new parameters must be predicted?  Again, I have given you the data and the inits to accelerate things.
+
+```{r, eval=key, echo=TRUE}
+inits=list(
+  list(
+    beta=rep(1,p),
+    sigma=.02,
+    phi = 2*10^-5,
+    tau = .5 
+  )
+)
+D.sm = D[idxkeep,idxkeep] #D was used to simulate data, above
+data = list(
+  y=as.double(dat$y_structured[idxkeep]),
+  X = X[idxkeep,],
+  y.p = p,
+  y.I = diag(length(idxkeep)),
+  D = D.sm,
+  y.min.prior.range=max(D.sm)/500,
+  y.max.prior.range=max(D.sm)
+)
+
+
+```
+
+```{r, echo=key, eval=key}
+##Fit model accounting for spatial depdennce
+{
+sink("SpatialJAGS.R")
+cat("
+    model{
+    for(i in 1:y.p){
+    beta[i] ~ dnorm(0,.00001)
+    }
+    sigma ~ dunif(0,5)  #unstructured error
+    #tau ~ dgamma(2,5)
+    tau ~ dgamma(.01,.01)
+    sigma_sq_struc <- 1 / tau 
+    phi ~ dunif(3/y.max.prior.range, 3/y.min.prior.range)
+    mu = X %*% beta
+    #Define exponential variance covariance matrix
+    for(i in 1:length(y)){
+       for(j in 1:length(y)){
+        Cov.mat[i,j] <- sigma_sq_struc * exp(-D[i,j] * phi)
+      }
+    }
+    prec.mat = inverse(Cov.mat + sigma^2*y.I)
+    y[] ~ dmnorm(mu[],prec.mat) 
+    epsilon = y - mu
+    }
+    ",fill=TRUE)
+sink()
+}
+```
+
+Get some output.  Does your model account for autocorrelation?
+
+```{r,echo=TRUE,eval=key}
+jm_s=jags.model("SpatialJAGS.R", n.adapt = n.adapt, n.chains = 1, inits=inits, data=data)
+update(jm_s, n.iter=n.update)
+zc_s = coda.samples(jm_s, variable.names=c("beta","sigma","phi", "mu"), n.iter=n.iter)
+
+zj_s =jags.samples(jm_s,variable.names=c("epsilon","beta","sigma","phi"," sigma_sq_struc", "mu"), n.iter=n.iter)
+epsilon_s = summary(zj_s$epsilon,mean)$stat
+par(mfrow=c(1,1))
+mu=summary(zj_s$mu,quantile,c(.025,.5,.975))$stat
+plot(data$X[,2],data$y)
+lines(data$X[,2],mu[2,],col="red")
+points(data$X[,2],mu[3,],col="blue", cex=.5)
+points(data$X[,2],mu[1,],col="blue", cex=.5)
+
+par(mfrow=c(2,2))
+image(matrix(epsilon_s,length(xg),length(yg)),x=xg,y=yg,col=rev(rainbow(100,start=0,end=.7)),main=expression(epsilon),asp=TRUE, xlab="Easting", ylab="Northing")
+
+n=length(idxkeep)
+utgrid.sm.locs=utgrid.locs[idxkeep,]
+epsilon.gd=as.geodata(cbind(utgrid.sm.locs,epsilon_s))
+epsilon.v=variog(epsilon.gd,max.dist=max(D))
+plot(epsilon.v)
+
+```
+

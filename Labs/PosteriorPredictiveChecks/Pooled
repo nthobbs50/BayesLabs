@@ -1,0 +1,35 @@
+
+model{
+#priors
+alpha ~ dnorm(0,.0001)
+beta ~ dnorm(0,.0001)
+sigma ~ dunif(0,100)
+tau.reg <- 1/sigma^2
+#likelihood
+ for(i in 1:length(y.emission)){
+    mu[i] <- alpha + beta * y.n.input[i]
+    y.emission[i] ~ dnorm(mu[i], tau.reg)
+    #simulated data for posterior predictive checks
+    y.emission.sim[i] ~ dnorm(mu[i], tau.reg) 
+    sq.error.data[i] <- (y.emission[i]-mu[i])^2
+    sq.error.sim[i] <- (y.emission.sim[i] - mu[i])^2
+ }
+#Bayesian P values
+sd.data <- sd(y.emission)
+sd.sim <- sd(y.emission.sim)
+p.sd <- step(sd.sim-sd.data)
+
+mean.data <- mean(y.emission)
+mean.sim  <- mean(y.emission.sim)
+p.mean <- step(mean.sim - mean.data)
+
+discrep.data <- sum(sq.error.data)
+discrep.sim <- sum(sq.error.sim)
+p.discrep <- step(discrep.sim - discrep.data)
+
+min.data <- min(y.emission)
+min.sim <- min(y.emission.sim)
+p.min <-step(min.sim-min.data)
+}
+    
+

@@ -1,0 +1,77 @@
+\documentclass[12pt]{article}
+\usepackage{amssymb,tabularx,multirow,amsmath,natbib, epsfig, threeparttable, amstext, subfigure}
+\usepackage[left=.5in,top=.75in,right=.5in,nohead,nofoot]{geometry}
+\setlength{\parskip}{12pt}
+
+\title{Day 8, PM Lab \\ Intro to Spatial Statistics \\ Bayesian Geostatistics}
+\date{}
+\begin{document}
+\maketitle
+
+\section*{Overview}
+
+In this lab, we are going to 1.) simulate geostatistical data, 2.) examine spatial dependence in errors, 3.) fit a Bayesian geostatistical model to simulated data using a.) JAGS and b.) spBayes, 4.) obtain spatial predictions (using spBayes), 5.) compare spatial predictions to ``true'' simulated process, 6.) create Bayesian model for Iowa temperature data and obtain predictions in a rectangular region encompassing the data. 
+
+\section*{Objectives}
+The objectives of this lab are to:
+\begin{enumerate}
+  \item Gain familiarity with spatial processes and models.
+  \item Obtain experience simulating Gaussian spatial processes.  
+  \item Learn how to manipulate spatial data in R.  
+  \item Use variograms to assess spatial structure in data and/or residuals.  
+  \item See how to fit Bayesian geostatistical models and obtain spatial predictions.
+\end{enumerate}
+
+\section*{Procedure}
+\begin{enumerate}
+  \item Open the MCMC algorithm file called `lab\_8\_script.R' in a text editor (or R).  Examine the different sections of this script which are denoted by the comments `\#\#\#\#'.  
+  \item In R, change directory to the lab folder. 
+  \item In this lab, we are first going to   
+  \item Following the R script:
+  \begin{enumerate}
+    \item Load packages:  geoR, maps, mvtnorm, rjags, spBayes, rgdal, and maptools.  Download them first if you don't have them installed.
+    \item Simulate data based on a continuous spatial process encompassing the state of Utah:
+    \begin{enumerate}
+      \item Convert Utah map to UTM coordinates. 
+      \item Find the boundaries of Utah. 
+      \item Specify points locations that span the spatial domain. 
+      \item Make a map to check these locations.  Note that even though these are truly point locations, we are going to visualize them in a regular grid for convenience.  They are NOT areal data in this case, as a different simulation and modeling procedure would be used in that case.
+      \item Create Euclidean distance matrix that specifies the distance between all points in full domain. 
+      \item Specify an exponential covariance model: $\Sigma_{i,j}=\sigma^2 \exp(-d_{i,j} \phi)$.  Note that in this specification the range parameter $\phi$ is on top in the exponential (preferred by the spBayes package).   
+      \item Simulate the spatially correlated error process from a multivariate normal: $\boldsymbol\varepsilon \sim \text{N}(\mathbf{0}, \boldsymbol\Sigma)$.  
+      \item Specify how much actual ``data'' you want keep.  Here we take a subset (perhaps randomly) of the simulated process and act like we don't have the rest, that way we can assess our predictive ability at those ``missing'' locations.
+      \item Make map of these correlated errors.
+    \end{enumerate}
+  \item Create an empirical semi-variogram to check the spatial structure evident in the correlated errors and compare with ``known'' simulated semi-variogram. 
+  \item Create a couple of spatially-structure covariates.  Here we just make up some interesting functions to construct $\mathbf{X}$.
+  \item Choose a known set of values for the regression coefficients $\boldsymbol\beta$.  
+  \item Create observed data vector $\mathbf{y}=\mathbf{X}\boldsymbol\beta + \boldsymbol\varepsilon$. 
+  \item Make figure containing maps of $\mathbf{y}$, $\boldsymbol\epsilon$, and the covariates.  
+  \item Use JAGS to fit model:
+  \begin{enumerate}
+    \item Set up variables so that we can use JAGS to fit geostatistical Bayesian model.   
+    \item View the JAGS model specification `lab\_8\_jags\_model.txt' file to see how this spatial model might be handled.  
+    \item Fit model using JAGS.  Note that we only use 1000 iterations to get a feel for how this model is fit.  JAGS is too slow for this problem to obtain a large number of MCMC samples and it is WAY too slow to produce spatial predictions.  
+    \item View MCMC trace plots based on JAGS output. 
+  \end{enumerate}
+  \item Use spBayes to fit model 
+  \begin{enumerate}
+    \item Set up variables so that we can use spBayes to fit geostatistical Bayesian model.
+    \item Use `spLM' to first fit the model. 
+    \item Use `spRecover' to obtain MCMC samples for $\boldsymbol\beta$ so that we can assess trace plots.
+    \item Check trace plots of model parameters for convergence.  
+    \item Use `spPredict' to obtain predictions and prediction standard deviations at all locations in the spatial domain.  Note that these quantities represent the mean and standard deviation of the spatial posterior predictive distribution.
+    \item Make figure that shows maps of the `true' process, data, predictions, and the prediction standard deviation.   
+  \end{enumerate}
+  \end{enumerate}
+\end{enumerate}
+
+\section*{Challenge}
+\begin{enumerate}
+  \item Read in the Iowa temperature data in file `iowa\_temperature.txt'. 
+  \item Create map of these data using circles with size corresponding to temperature with Iowa state boundary overlaid. 
+  \item Using the spatial coordinates as covariates, create a Bayesian predictive surface map over the region encompassing the data.  Also construct a map illustrating the uncertainty in predictions.  
+\end{enumerate}
+
+
+\end{document}

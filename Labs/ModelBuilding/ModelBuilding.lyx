@@ -11,7 +11,7 @@
 % packages
                    	
 \usepackage{bm}
-\usepackage[nodisplayskipstretch]{setspace}
+%\usepackage[nodisplayskipstretch]{setspace}
 \usepackage{enumitem}
 \usepackage{fancyheadings}
 \usepackage{csquotes}
@@ -20,7 +20,7 @@
 % Configuration
 
 
-\input{"../middle_header.txt"}
+%\input{"../middle_header.txt"}
 \chead{Model Building}
 \title{\vspace{-1cm}Model  Building Exercises}
 
@@ -740,7 +740,7 @@ In this DAG,
 \begin_layout Standard
 \begin_inset Formula 
 \begin{align*}
-\big[\bm{\gamma},\bm{\beta},\sigma\mid\bm{y}\big]\varpropto\prod_{i=1}^{1000}\prod_{j=1}^{40}\big[y_{ij}\mid g\big(\bm{\beta},x_{ij}\big)\big]\big[\beta_{0,ij}\mid h\big(\bm{\gamma},w_{j}\big),\sigma^{2}\big]\big[\bm{\gamma}\big]\big[\beta_{1}\big]\big[\sigma\big]
+\big[\bm{\gamma},\bm{\beta},\sigma\mid\bm{y}\big]\varpropto\prod_{i=1}^{1000}\prod_{j=1}^{40}\big[y_{ij}\mid g\big(\bm{\beta},x_{ij}\big)\big]\big[\beta_{0,j}\mid h\big(\bm{\gamma},w_{j}\big),\sigma^{2}\big]\big[\bm{\gamma}\big]\big[\beta_{1}\big]\big[\sigma\big]
 \end{align*}
 
 \end_inset
@@ -748,10 +748,10 @@ In this DAG,
 
 \begin_inset Formula 
 \[
-\begin{aligned} & g\big(\bm{\beta},x_{ij}\big)=\frac{e^{\beta_{0,ij}+\beta_{1}x_{ij}}}{1+e^{\beta_{0,ij}+\beta_{1}x_{ij}}}\\
+\begin{aligned} & g\big(\bm{\beta},x_{ij}\big)=\frac{e^{\beta_{0,j}+\beta_{1}x_{ij}}}{1+e^{\beta_{0,j}+\beta_{1}x_{ij}}}\\
  & h\big(\bm{\gamma},w_{j}\big)=\gamma_{0}+\gamma_{1}w_{j}\\
  & y_{ij}\sim\textrm{Bernoulli}\big(g\big(\bm{\beta},x_{ij}\big)\big)\\
- & \beta_{0}\sim\textrm{normal}\big(h\big(\bm{\gamma},w_{j}\big),\sigma^{2})\\
+ & \beta_{0,j}\sim\textrm{normal}\big(h\big(\bm{\gamma},w_{j}\big),\sigma^{2})\\
  & \beta_{1}\sim\textrm{normal}\big(0,1000)
 \end{aligned}
 \quad\quad\quad\begin{aligned} & \gamma_{0}\sim\textrm{normal}\big(0,1000)\\
@@ -1089,7 +1089,7 @@ Your major professor objected to your assumption of cover observed perfectly
 :
 \begin_inset Formula 
 \begin{eqnarray}
-h(\bm{\alpha},x_{i}) & = & \frac{e^{\alpha_{o}+\alpha_{1}z_{i}}}{1+e^{\alpha_{o}+\alpha_{1}z_{i}}}\\
+h(\bm{\alpha},z_{i}) & = & \frac{e^{\alpha_{o}+\alpha_{1}z_{i}}}{1+e^{\alpha_{o}+\alpha_{1}z_{i}}}\\
 x_{i} & \sim & \text{beta}\big(m(h(\bm{\alpha},z_{i}),\varsigma^{2})\big)\\
 \alpha_{o} & \sim & \text{\text{normal}(.05,.006)}\\
 \alpha_{1} & \sim & \text{normal}(1.07,.13)\\
@@ -1161,16 +1161,20 @@ status open
 
 
 \backslash
-big skip
+bigskip 
 \end_layout
 
 \end_inset
 
- You could allow each stream reach to have its own intercept (i.e., 
-\begin_inset Formula $\beta_{0,j}$
+ 
+\end_layout
+
+\begin_layout Standard
+You could allow each stream reach to have its own intercept (i.e., 
+\begin_inset Formula $\beta_{0,k}$
 \end_inset
 
-), which you model as a linear or non-linear function of data on peak runoff.
+), which you model as a linear or non-linear function of data of peak runoff.
  
 \end_layout
 

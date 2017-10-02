@@ -1,0 +1,1232 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+     
+                   	
+\usepackage{bm}
+\usepackage{enumitem}
+
+\newif\ifanswers
+\answerstrue % comment out to hide answers
+
+\usepackage{fancyheadings}
+\pagestyle{fancy}
+\input{"../middle_header.txt"}
+\chead{}					
+\end_preamble
+\use_default_options false
+\maintain_unincluded_children false
+\language english
+\language_package none
+\inputencoding auto
+\fontencoding default
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize 12
+\spacing other 1.5
+\use_hyperref false
+\papersize letterpaper
+\use_geometry true
+\use_amsmath 2
+\use_esint 1
+\use_mhchem 0
+\use_mathdots 0
+\cite_engine natbib_authoryear
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 1in
+\topmargin 1in
+\rightmargin 1in
+\bottommargin 1in
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle fancy
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Practice in writing hierarchical models
+\end_layout
+
+\begin_layout Section
+Motivation
+\end_layout
+
+\begin_layout Standard
+The ability of Bayesian methods to handle hierarchical models in an unusually
+ tidy way is why they are becoming the first choice for complex problems
+ in ecology and conservation biology, problems with multiple unknowns, sources
+ of data and sources of uncertainty.
+ Recall that the posterior distribution of all of the unobserved quantities
+ is proportionate to the joint distributions of the unobserved quantities
+ and the data: 
+\begin_inset Formula 
+\begin{equation}
+\left[\bm{\theta}\vert\mathbf{y}\right]\propto\underbrace{[\bm{\theta},\mathbf{y}]}_{\text{Factor into sensible parts.}}
+\end{equation}
+
+\end_inset
+
+The starting point for developing hierarchical models is to write a properly
+ factored
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Properly means that the expression for the factored joint distribution obeys
+ the chain rule of probability after assumptions about independence have
+ been made.
+ Bayesian networks, also called directed acyclic graphs, offer a way to
+ visually assure that your model does this.
+\end_layout
+
+\end_inset
+
+ expression for the proportionality between the posterior and joint distribution
+ of the observed and unobserved quantities.
+ This will be true if there is one unknown and one data set or one hundred
+ unknowns and ten data sets.
+ This factored expression is 
+\emph on
+all
+\emph default
+ that is required to specify a 
+\begin_inset Quotes eld
+\end_inset
+
+roll-your-own
+\begin_inset Quotes erd
+\end_inset
+
+ MCMC algorithm or to write code in one of the current software packages
+ that sample from the marginal posterior distributions for you, JAGS, STAN,
+ OpenBUGS etc.
+ The expression for posterior and joint is where you start discussions with
+ statistical colleague.
+ It should be included in all papers and proposals using Bayesian methods
+ because it communicates virtually everything about where your inferences
+ come from.
+ 
+\end_layout
+
+\begin_layout Standard
+It follows that learning to write proper mathematical and statistical expression
+s for Bayesian models is 90% of the battle.
+ In this exercise, we will practice that vital skill.
+ The problems increase in difficulty as we proceed, so it will be important
+ to understand what you did right and wrong before you proceed to the next
+ problem.
+ In addition to practice drawing Bayesian networks and writing posterior
+ and joint distributions, the problems will challenge you to 
+\end_layout
+
+\begin_layout Standard
+1) Choose distributions appropriate for the support of the random variable.
+\end_layout
+
+\begin_layout Standard
+2) Deftly use moment matching to convert means and standard deviations to
+ parameters of distributions.
+\end_layout
+
+\begin_layout Standard
+3) Make inferences on derived quantities.
+\end_layout
+
+\begin_layout Section
+Approach
+\end_layout
+
+\begin_layout Standard
+Draw a directed acyclic graph (DAG aka Bayesian network) for all of the
+ following problems.
+ When I ask you to write a model I am asking for an expression for the posterior
+ and joint distributions for the observed and unobserved quantities.
+ The diagram will help.
+ For now, you can use bracket notation to specify the model.
+ We will discuss choices of specific distributions as we compose the answer
+ on the board.
+\end_layout
+
+\begin_layout Standard
+I suggest the following steps.
+\end_layout
+
+\begin_layout Enumerate
+Identify what is observed and what is unobserved.
+ Write the posterior distribution of the observed and unobserved quantities.
+ Remember, we do not include covariates that are measured without error
+ in the posterior distribution because they are not random variables.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Draw a DAG with the data at the top.
+ Think about how the data arise.
+ Remember, each level in the diagram represents a probability distribution
+ with the heads of the arrows indicating a random variable and the tails
+ of the arrows representing the parameters of the distribution (or moments
+ of the distribution assuming you will match the moments to the parameters).
+\end_layout
+
+\begin_layout Enumerate
+Use the diagram to write out a properly factored joint distribution.
+\end_layout
+
+\begin_layout Section
+Problems
+\end_layout
+
+\begin_layout Enumerate
+\begin_inset CommandInset citation
+LatexCommand citet
+key "Clark:2003vn"
+
+\end_inset
+
+ modeled fecundity of spotted owls using data on number of offspring produced
+ per female for 119 individuals.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Write an expression for the posterior and joint distribution for the mean
+ fecundity assuming that all individuals have the same mean fecundity and
+ that differences among the observations arise from sampling error.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Now write a model that allows each individual to have its own mean fecundity
+ drawn from a distribution of fecundities.
+\end_layout
+
+\begin_layout Enumerate
+Answers will be given on the board in class.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+Conservation Science Partners is studying the effect of treatment to reduce
+ wildfire hazard in four state parks in California.
+ The data involve a time series, but we will limit our consideration to
+ the final, 20th year to keep things simple for this example.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+To start, construct a model of the effect of treatment (treated or untreated)
+ on mean tree density.
+ Data are counts of trees on 
+\begin_inset Formula $i=1,...,n$
+\end_inset
+
+ plots of equal size a single individual park.
+ Write a model that allows you to approximate the posterior distribution
+ of the difference attributable to treatment.
+ 
+\end_layout
+
+\begin_layout Enumerate
+Now consider that you have 
+\begin_inset Formula $j=1,...,4$
+\end_inset
+
+ parks with 
+\begin_inset Formula $n_{j}$
+\end_inset
+
+ plots within each park.
+ The parks are in different locations in California and you want to model
+ the differences among the parks without explicitly modeling the sources
+ of those differences.
+ Write a new, hierarchical model for the effect of the fire treatment that
+ reflects the 
+\begin_inset Quotes eld
+\end_inset
+
+group-level
+\begin_inset Quotes erd
+\end_inset
+
+ effect of different parks (also called a 
+\begin_inset Quotes eld
+\end_inset
+
+random effect
+\begin_inset Quotes erd
+\end_inset
+
+).
+\end_layout
+
+\begin_layout Enumerate
+Next consider that you have data at the park level on proportion of the
+ forest canopy that is pine.
+ Use this covariate data (at the park level) to model the differences among
+ parks.
+ Hint-- think of modeling an 
+\begin_inset Quotes eld
+\end_inset
+
+intercept
+\begin_inset Quotes erd
+\end_inset
+
+ as a function of the park level covariate.
+ You may assume that the proportion of the park landscape that is pine is
+ measured without error, although you wouldn't necessarily need to do this.
+\end_layout
+
+\begin_layout Enumerate
+We are now interested in fine fuels (gm/m
+\begin_inset script superscript
+
+\begin_layout Plain Layout
+2
+\end_layout
+
+\end_inset
+
+) per plot.
+ There are 
+\begin_inset Formula $k=1,...,K$
+\end_inset
+
+ transects within each plot so that the response (fine fuels) is not measured
+ perfectly -- we must account for the uncertainty that arises from sampling.
+ Write a full model including this uncertainty as well as the effect of
+ the group level covariate, proportion pine.
+ 
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+You have data on patch occupancy by a breeding bird based on three replicated
+ searches of 200 transects at random locations on the landscape.
+ The data consist of the number of the number of times the bird was detected
+ visually or by hearing its call.
+ For now, you may assume no spatial autocorrelation in the data.
+ You have a set of landscape covariates associated with each patch and you
+ seek to understand how those covariates influence the probability that
+ a patch is occupied 
+\begin_inset Formula $(\phi_{i})$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_deeper
+\begin_layout Enumerate
+Start by assuming that detection is perfect.
+ Write a Bayesian model for the effect of covariates 
+\begin_inset Formula $(\mathbf{x}_{i})$
+\end_inset
+
+ on the probability of patch occupancy 
+\begin_inset Formula $(\phi_{i})$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Now relax the heroic assumption of perfect detection.
+ You must first model the data (the number of successful detections on a
+ given number of visits) and link your model of the data to the occupancy
+ process, the true state of occupancy of the patch.
+ Assume that detection probability 
+\begin_inset Formula $(p)$
+\end_inset
+
+ is constant across all patches.
+\end_layout
+
+\begin_layout Enumerate
+Discuss how you would need to change your model if you had visit-specific
+ covariates allowing you to model detection probability for each patch.
+\end_layout
+
+\begin_layout Enumerate
+Answers will be given on the board in class.
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+You are interested in modeling the relationship between per capita income
+ and an index of air pollution for 80 nations around the world (i.e., the
+ Kuznets effect).
+ You hypothesize that air pollution increases then declines as per capita
+ income increases.
+ You have data on the mean (and the standard deviation of the mean) for
+ each country's air quality index (a continuous non-negative variable).
+ The predictor variable (income) is not measured perfectly because it is
+ based on a sample -- you have a mean and a standard deviation of the mean
+ for the per capita income of each county.
+ How would you analyze these data in a way that is honest about all sources
+ of uncertainty?
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+ifanswers
+\end_layout
+
+\end_inset
+
+
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+center
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../../../../Dropbox/SESYNCBayes/coursePrep/CommonAnalysisProblems/KuznetsDAG.pdf
+	width 4.75in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Plain Layout
+In this DAG, 
+\begin_inset Formula $y_{i}$
+\end_inset
+
+ and 
+\begin_inset Formula $sd_{y,i}$
+\end_inset
+
+ and 
+\begin_inset Formula $x_{i}$
+\end_inset
+
+ and 
+\begin_inset Formula $sd_{x,i}$
+\end_inset
+
+ and are the means (and standard deviations of the means) of air quality
+ and per capita income in the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ county.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\big[\bm{z},\bm{w},\alpha,\bm{\beta},\sigma_{p}^{2}\mid\bm{y},\bm{x}\big]\varpropto & \prod_{i=1}^{n}\big[y_{i}\mid z_{i},sd_{y,i}^{2}\big]\big[z_{i}\mid g\big(\alpha,\bm{\beta},w_{i}\big),\sigma_{p}^{2}\big]\big[x_{i}\mid w_{i},sd_{x,i}^{2}\big]\\
+ & \times\big[z_{i}\big]\big[w_{i}\big]\big[\alpha\big]\big[\beta_{0}\big]\big[\beta_{1}\big]\big[\sigma_{p}^{2}\big]
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\begin{aligned} & g\big(\alpha,\bm{\beta},w_{i}\big)\big)=e^{\alpha+\beta_{1}w_{i}+\beta_{2}w_{i}^{2}}\\
+ & z_{i}\sim\textrm{lognormal}\big(\textrm{log}\big(g\big(\alpha,\bm{\beta},w_{i}\big)\big),\sigma_{p}^{2}\big)\\
+ & y_{i}\sim\textrm{lognormal}\big(\textrm{log}\big(z_{i}\big),sd_{y,i}^{2}\big)\\
+ & x_{i}\sim\textrm{lognormal}\big(\textrm{log}\big(w_{i}\big),sd_{x,i}^{2}\big)\\
+ & w_{i}\sim\textrm{gamma}\big(.001,.001)
+\end{aligned}
+\quad\quad\quad\begin{aligned} & z_{i}\sim\textrm{gamma}\big(.001,.001)\\
+ & \alpha\sim\textrm{normal}\big(0,1000)\\
+ & \beta_{1}\sim\textrm{normal}\big(0,1000)\\
+ & \beta_{2}\sim\textrm{normal}\big(0,1000)\\
+ & \sigma_{p}^{2}\sim\textrm{uniform}\big(0,100)
+\end{aligned}
+\]
+
+\end_inset
+
+
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+fi
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+You have data on the relationship between incidence of lung cancer in households
+ (1 if cancer is present and 0 if no cancer) and radon levels in the house
+ for 1000 houses in 40 counties within a state.
+ You also have data on the clay soil content at the county level, which
+ you bravely assume is known without error.
+ How would you model the effect of radon and soil type on the probability
+ of lung cancer? 
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+ifanswers
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+center
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../../../../Dropbox/SESYNCBayes/coursePrep/CommonAnalysisProblems/RadonDAG.pdf
+	width 2.75in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Plain Layout
+In this DAG, 
+\begin_inset Formula $x_{ij}$
+\end_inset
+
+ is the radon level and 
+\begin_inset Formula $y_{ij}$
+\end_inset
+
+ is an indicator that equals 1 if cancer is present and 0 if it is not in
+ the 
+\begin_inset Formula $i^{th}$
+\end_inset
+
+ house in the 
+\begin_inset Formula $j^{th}$
+\end_inset
+
+ county, and 
+\begin_inset Formula $w_{j}$
+\end_inset
+
+ is the clay soil content in the 
+\begin_inset Formula $j^{th}$
+\end_inset
+
+ county.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\big[\bm{\gamma},\bm{\beta},\sigma^{2}\mid\bm{y}\big]\varpropto\prod_{i=1}^{M_{j}}\prod_{j=1}^{N}\big[y_{ij}\mid g\big(\bm{\beta},x_{ij}\big)\big]\big[\beta_{0,ij}\mid h\big(\bm{\gamma},w_{j}\big),\sigma^{2}\big]\big[\bm{\gamma}\big]\big[\beta_{1}\big]\big[\sigma^{2}\big]
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\begin{aligned} & g\big(\bm{\beta},x_{ij}\big)=\frac{e^{\beta_{0,ij}+\beta_{1}x_{ij}}}{1+e^{\beta_{0,ij}+\beta_{1}x_{ij}}}\\
+ & h\big(\bm{\gamma},w_{j}\big)=\gamma_{0}+\gamma_{1}w_{j}\\
+ & y_{ij}\sim\textrm{Bernoulli}\big(g\big(\bm{\beta},x_{ij}\big)\big)\\
+ & \beta_{0}\sim\textrm{normal}\big(h\big(\bm{\gamma},w_{j}\big),\sigma^{2})\\
+ & \beta_{1}\sim\textrm{normal}\big(0,.001)
+\end{aligned}
+\quad\quad\quad\begin{aligned} & \gamma_{0}\sim\textrm{normal}\big(0,1000)\\
+ & \gamma_{1}\sim\textrm{normal}\big(0,1000)\\
+ & \sigma^{2}\sim\textrm{uniform}\big(0,1000)\\
+\\
+\\
+\end{aligned}
+\]
+
+\end_inset
+
+
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+fi
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+You have plot level data on diversity of plant communities.
+ The data consist of counts 
+\begin_inset Formula $y_{ij}$
+\end_inset
+
+ of the number of individuals of species 
+\begin_inset Formula $i$
+\end_inset
+
+ on 
+\begin_inset Formula $j=1...J$
+\end_inset
+
+ same-sized plots, and the total number of individuals on plot 
+\begin_inset Formula $j$
+\end_inset
+
+ is reported as 
+\begin_inset Formula $n_{j}$
+\end_inset
+
+.
+ How would you estimate an index 
+\begin_inset Formula $(H)$
+\end_inset
+
+ of species diversity across the community, where 
+\begin_inset Formula $H=-\sum_{i=1}^{R}p_{i}\textrm{log}\big(p_{i}\big)$
+\end_inset
+
+, 
+\begin_inset Formula $(p_{i})$
+\end_inset
+
+ is the mean proportion of the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ species in in the community, and R is the total number of species present?
+ All estimates must include proper accounting for uncertainty.
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+ifanswers
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename ../../../../Dropbox/SESYNCBayes/coursePrep/CommonAnalysisProblems/DiversityDAG.pdf
+	width 1.5in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Plain Layout
+In this DAG, 
+\begin_inset Formula $y_{ij}$
+\end_inset
+
+ is the number of individuals in the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ species observed in the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ plot while 
+\begin_inset Formula $n_{j}$
+\end_inset
+
+ is the total number of individuals across all species observed in the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ plot.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\big[\bm{\phi}\mid\mathbf{Y},\bm{n}\big]\varpropto\prod_{j=1}^{J}\big[\bm{y}_{j}\mid n_{j},\bm{\phi}\big]\big[\bm{\phi}\big]
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\begin{aligned} & H=-\sum_{i=1}^{R}\phi_{i}\textrm{log}\big(\phi_{i}\big)\\
+ & \bm{y}_{j}\sim\textrm{multinomial}\big(n_{j},\bm{\phi}\big)\\
+ & \bm{\phi}\sim\textrm{Dirichlet}\underbrace{\big(1,1,\cdots,1\big)'}_{\text{a vector of length R}}
+\end{aligned}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace 10mm
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where 
+\begin_inset Formula $R$
+\end_inset
+
+ is the the total number of species across all plots (this comes from the
+ data).
+ 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+fi
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Enumerate
+You have data on the number of willow seedings that establish on 100 10
+ 
+\begin_inset Formula $\times$
+\end_inset
+
+ 10 meter plots.
+ Assume these data are measured perfectly, i.e.
+ you did not over- or under-count seedlings.
+ You also have five measurements of soil water and one measurement of percent
+ cover (estimated visually) on each plot.
+ You also know the mean and standard deviation of the intercept and slope
+ in an inverse logit calibration equation 
+\begin_inset Formula $\left(y_{\text{visual,i}}=\frac{e^{\gamma_{0}+\gamma_{1}y_{\text{true},i}}}{1+e^{\gamma_{0}+\gamma_{1}y_{\text{true},i}}}\right)$
+\end_inset
+
+ regressing visually estimated cover 
+\begin_inset Formula $(y_{\text{visual},i}$
+\end_inset
+
+) to measured cover (
+\begin_inset Formula $y_{\text{true},i})$
+\end_inset
+
+ as well as the standard error of the regression.
+ Develop a Bayesian hierarchical model the the effect of soil water on counts
+ of willow seedlings including the uncertainty that arises from visually
+ estimating the cover covariate.
+ For the speedy and ambitious, write a model for the calibration equation
+ as well.
+\end_layout
+
+\begin_layout Enumerate
+Now presume that the 100 plots are arranged in five stream reaches.
+ You have data on peak runoff in each of the reaches, which you may assume
+ is measured perfectly.
+ You want to understand variation at the catchment scale created by peak
+ runoff.
+ How would you include the data on runoff in the model you developed in
+ problem 4?
+\end_layout
+
+\begin_deeper
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Plain Layout
+
+
+\backslash
+ifanswers
+\end_layout
+
+\end_inset
+
+ 
+\begin_inset Newpage newpage
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename ../../../../Dropbox/SESYNCBayes/coursePrep/CommonAnalysisProblems/WillowDAG.pdf
+	width 5.75in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Plain Layout
+In this DAG, 
+\begin_inset Formula $y_{i}$
+\end_inset
+
+ is the number of willow seedlings, 
+\begin_inset Formula $x_{s,ij}$
+\end_inset
+
+ is the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ measurement of soil water content, and 
+\begin_inset Formula $x_{c,i}$
+\end_inset
+
+ is a visual estimate of percent cover on the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ plot.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\big[\bm{\beta},\bm{\gamma},\bm{w_{s}},\bm{w_{c}},\sigma_{s}^{2},\sigma_{c}^{2}\mid\bm{y},\bm{X_{s}},\bm{x_{c}}\big]\varpropto & \prod_{i=1}^{100}\big[y_{i}\mid g\big(\bm{\beta},w_{s,i},w_{c,i}\big)\big]\prod_{j=1}^{5}\big[x_{s,ij}\mid\textrm{log}\big(w_{s,i}\big),\sigma_{s}^{2}\big]\\
+ & \times\big[x_{c,i}\mid\mu_{i},\sigma_{c}^{2}\big]\big[\beta_{0}\big]\big[\beta_{1}\big]\big[\gamma_{0}\big]\big[\gamma_{1}\big]\big[w_{s,i}\big]\big[w_{c,i}\big]\big[\sigma_{s}^{2}\big]\big[\sigma_{c}^{2}\big]
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\begin{aligned} & g\big(\bm{\beta},w_{s,i},w_{c,i}\big)=e^{\beta_{0}+\beta_{1}w_{s,i}+\beta_{2}w_{c,i}}\\
+ & \mu_{i}=\frac{e^{\gamma_{0}+\gamma_{1}w_{c,i}}}{1+e^{\gamma_{0}+\gamma_{1}w_{c,i}}}\\
+ & \alpha_{i}=\frac{\mu_{i}^{2}-\mu_{i}^{3}-\mu_{i}\sigma_{c}^{2}}{\sigma_{c}^{2}}\\
+ & \beta_{i}=\frac{\mu_{i}^{2}-2\mu_{i}^{2}+\mu_{i}^{3}-\sigma_{c}^{2}+\mu_{i}\sigma_{c}^{2}}{\sigma_{c}^{2}}\\
+ & y_{i}\sim\textrm{Poisson}\big(g\big(\bm{\beta},w_{s,i},w_{c,i}\big)\big)\\
+ & x_{s,ij}\sim\textrm{lognormal}\big(\textrm{log}\big(w_{s,i}\big),\sigma_{s}^{2}\big)\\
+ & x_{c,i}\sim\textrm{beta}\big(\alpha_{i},\beta_{i}\big)
+\end{aligned}
+\quad\quad\quad\begin{aligned} & \beta_{0}\sim\textrm{normal}\big(0,1000)\\
+ & \beta_{1}\sim\textrm{normal}\big(0,100)\\
+ & w_{s,i}\sim\textrm{gamma}\big(.001,.001)\\
+ & w_{c,i}\sim\textrm{uniform}\big(0,1)\\
+ & \gamma_{0}\sim\textrm{normal}\big(\gamma_{0,mean},\gamma_{0,prec})\\
+ & \gamma_{1}\sim\textrm{normal}\big(\gamma_{1,mean},\gamma_{1,prec})\\
+ & \sigma_{s}^{2}\sim\textrm{uniform}\big(0,100)\\
+ & \sigma_{c}^{2}\sim\textrm{gamma}\big(\sigma_{c,\alpha}^{2},\sigma_{c,\beta}^{2}\big)
+\end{aligned}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace 10mm
+\end_inset
+
+
+\end_layout
+
+\end_deeper
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename ../../../../Dropbox/SESYNCBayes/coursePrep/CommonAnalysisProblems/WillowCalibrationDAG.pdf
+	width 2.5in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Plain Layout
+In this DAG, 
+\begin_inset Formula $x_{c,m}$
+\end_inset
+
+ is the percent cover estimated visually and 
+\begin_inset Formula $w_{c,m}$
+\end_inset
+
+ is the actual percent cover measured with a quadrat in the 
+\begin_inset Formula $m_{th}$
+\end_inset
+
+ calibration plot.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\big[\bm{\gamma},\sigma_{c}^{2}\mid\bm{x_{c}}\big]\varpropto & \prod_{m=1}^{15}\big[\bm{x}_{c,m}\mid\mu_{m},\sigma_{c}^{2}\big]\big[\gamma_{0}\big]\big[\gamma_{1}\big]\big[\sigma_{c}^{2}\big]\\
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\begin{aligned} & \mu_{m}=\frac{e^{\gamma_{0}+\gamma_{1}w_{c,m}}}{1+e^{\gamma_{0}+\gamma_{1}w_{c,m}}}\\
+ & \alpha_{m}=\frac{\mu_{m}^{2}-\mu_{m}^{3}-\mu_{m}\sigma_{c}^{2}}{\sigma_{c}^{2}}\\
+ & \beta_{m}=\frac{\mu_{m}^{2}-2\mu_{m}^{2}+\mu_{m}^{3}-\sigma_{c}^{2}+\mu_{m}\sigma_{c}^{2}}{\sigma_{c}^{2}}\\
+ & x_{c,m}\sim\textrm{beta}\big(\alpha_{m},\beta_{m}\big)
+\end{aligned}
+\quad\quad\quad\begin{aligned} & \gamma_{0}\sim\textrm{normal}\big(0,1000)\\
+ & \gamma_{1}\sim\textrm{normal}\big(0,1000)\\
+ & \sigma_{c}^{2}\sim\textrm{uniform}\big(0,100)\\
+\\
+\\
+\end{aligned}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace 10mm
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To use informed priors on 
+\begin_inset Formula $\gamma_{0}$
+\end_inset
+
+, 
+\begin_inset Formula $\gamma_{1}$
+\end_inset
+
+, and 
+\begin_inset Formula $\sigma_{c}^{2}$
+\end_inset
+
+ we take the mean and standard deviation of each of their MCMC chains and
+ moment match into the appropriate parameters for priors.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename ../../../../Dropbox/SESYNCBayes/coursePrep/CommonAnalysisProblems/WillowMultiLevelDAG.pdf
+	width 5.5in
+
+\end_inset
+
+ 
+\begin_inset Caption
+
+\begin_layout Plain Layout
+In this DAG, 
+\begin_inset Formula $y_{ik}$
+\end_inset
+
+ is the number of willow seedlings, 
+\begin_inset Formula $x_{s,ijk}$
+\end_inset
+
+ is the 
+\begin_inset Formula $j_{th}$
+\end_inset
+
+ measurement of soil water content, 
+\begin_inset Formula $x_{c,ik}$
+\end_inset
+
+ is a visual estimate of percent cover, and 
+\begin_inset Formula $x_{r,k}$
+\end_inset
+
+ is peak runoff on the 
+\begin_inset Formula $i_{th}$
+\end_inset
+
+ plot in the 
+\begin_inset Formula $k_{th}$
+\end_inset
+
+ stream reach.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{align*}
+\big[\bm{\beta},\bm{\gamma},\bm{\eta},\bm{w_{s}},\bm{w_{c}},\sigma_{s}^{2},\sigma_{c}^{2},\sigma_{r}^{2} & \mid\bm{y},\bm{x_{s}},\bm{x_{c}},\bm{x_{r}}\big]\varpropto\\
+ & \prod_{i=1}^{20}\prod_{k=1}^{5}\big[y_{ik}\mid g\big(\bm{\beta},w_{s,ik},w_{c,ik}\big)\big]\big[\beta_{0,k}\mid h\big(\bm{\eta},x_{r,k}\big)\big]\\
+ & \times\prod_{j=1}^{5}\big[x_{s,ijk}\mid\textrm{log}\big(w_{s,ik}\big),\sigma_{s}^{2}\big]\big[x_{c,ik}\mid\mu_{ik},\sigma_{c}^{2}\big]\\
+ & \times\big[\beta_{1}\big]\big[\gamma_{0}\big]\big[\gamma_{1}\big]\big[\eta_{0}\big]\big[\eta_{1}\big]\big[w_{s,ik}\big]\big[w_{c,ik}\big]\big[\sigma_{s}^{2}\big]\big[\sigma_{c}^{2}\big]\big[\sigma_{r}^{2}\big]
+\end{align*}
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\begin{aligned} & g\big(\bm{\beta},w_{s,ik},w_{c,i}\big)=e^{\beta_{0,k}+\beta_{1}w_{s,ik}+\beta_{2}w_{c,ik}}\\
+ & h\big(\bm{\eta},x_{r,k}\big)=\eta_{0}+\eta_{1}x_{r,k}\\
+ & \mu_{ik}=\frac{e^{\gamma_{0}+\gamma_{1}w_{c,ik}}}{1+e^{\gamma_{0}+\gamma_{1}w_{c,ik}}}\\
+ & \alpha_{ik}=\frac{\mu_{ik}^{2}-\mu_{ik}^{3}-\mu_{ik}\sigma_{c}^{2}}{\sigma_{c}^{2}}\\
+ & \beta_{ik}=\frac{\mu_{ik}^{2}-2\mu_{ik}^{2}+\mu_{ik}^{3}-\sigma_{c}^{2}+\mu_{i}\sigma_{c}^{2}}{\sigma_{c}^{2}}\\
+ & y_{ik}\sim\textrm{Poisson}\big(g\big(\bm{\beta},w_{s,ik},w_{c,ik}\big)\big)\\
+ & \beta_{0,k}\sim\textrm{normal}\big(h\big(\bm{\eta},x_{r,k}\big),\sigma_{r}^{2}\big)\\
+ & x_{s,ijk}\sim\textrm{lognormal}\big(\textrm{log}\big(w_{s,ik}\big),\sigma_{s}^{2}\big)\\
+ & x_{c,ik}\sim\textrm{beta}\big(\alpha_{ik},\beta_{ik}\big)
+\end{aligned}
+\quad\quad\quad\begin{aligned} & \beta_{1}\sim\textrm{normal}\big(0,1000)\\
+ & w_{s,ik}\sim\textrm{gamma}\big(.001,.001)\\
+ & w_{c,ik}\sim\textrm{uniform}\big(0,1)\\
+ & \eta_{0}\sim\textrm{normal}\big(0,1000)\\
+ & \eta_{1}\sim\textrm{normal}\big(0,1000)\\
+ & \gamma_{0}\sim\textrm{normal}\big(\gamma_{0,mean},\gamma_{0,var})\\
+ & \gamma_{1}\sim\textrm{normal}\big(\gamma_{1,mean},\gamma_{1,var})\\
+ & \sigma_{s}^{2}\sim\textrm{uniform}\big(0,100)\\
+ & \sigma_{c}^{2}\sim\textrm{gamma}(\alpha_{c},\eta_{_{c}}\big)\\
+ & \sigma_{r}^{2}\sim\textrm{uniform}\big(0,100)
+\end{aligned}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset VSpace 10mm
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "/Users/Tom/Documents/Literature_File/master"
+options "/Users/Tom/Documents/Literature_File/ecology"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

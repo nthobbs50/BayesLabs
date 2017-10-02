@@ -1,0 +1,26 @@
+\documentclass[12pt, oneside]{article}     
+\usepackage[margin=1in]{geometry}                  	
+\geometry{letterpaper}                   	
+\usepackage{graphicx}				
+\usepackage{amssymb}
+\usepackage{amsmath}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+\usepackage{bm}
+\usepackage{float}
+\usepackage[nodisplayskipstretch]{setspace}
+\setstretch{1.5}
+
+\begin{document}
+
+\begin{align*}
+\big[ \alpha_{\psi}, \beta_{\psi}, \gamma_{\psi}, \alpha_{r}, \beta_{r}, \gamma_{r}, & p_{2}, \bm{p_{3}}, \bm{z1}, \bm{z2} \mid \bm{x} \big] \varpropto \\ 
+& \prod_{s=1}^{181} \prod_{y \in Y} \prod_{v=1}^{V_{s,y}} \textrm{categorical} \big( x_{s,y,v} \mid \bm{\pi} \cdot \bm{z_{s,y}} \big) \\
+& \times \prod_{s=1}^{181} \prod_{y=2}^{21} \textrm{Bernoulli} \big( z1_{s,y} \mid f( \alpha_{\psi}, \beta_{\psi}, \gamma_{\psi}, z1_{s,y-1}) \big) \\
+& \times \textrm{Bernoulli} \big( z2_{s,y} \mid g( \alpha_{r}, \beta_{r}, \gamma_{r}, z2_{s,y-1}) \big) \\
+& \times \prod_{s=1}^{181}  \textrm{Bernoulli} \big( z1_{s,1} \mid h( \alpha_{\psi}, \beta_{\psi}) \big) \textrm{Bernoulli} \big( z2_{s,1} \mid m( \alpha_{r}, \beta_{r}) \big) \\
+& \times \textrm{normal} \big( \alpha_{\psi} \mid 0, 2.59 \big) \textrm{normal} \big( \beta_{\psi} \mid 0, 2.59 \big) \textrm{normal} \big( \gamma_{\psi} \mid 0, 2.59 \big) \\
+& \times \textrm{normal} \big( \alpha_{r} \mid 0, 2.59 \big) \textrm{normal} \big( \beta_{r} \mid 0, 2.59 \big) \textrm{normal} \big( \gamma_{r} \mid  0, 2.59 \big) \\
+& \times \textrm{uniform} \big( p_{2} \mid 0, 1 \big) \textrm{Dirichlet} \big( \bm{p_{3}} \mid 1,1,1 \big) \\
+\end{align*}
+
+\end{document}
+

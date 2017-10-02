@@ -1,0 +1,223 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+
+<style>
+
+/* uncomment out this to generate exercise */
+#.hider {display: none;} 
+#.hider2 {display: inline;} 
+
+/* uncomment out this to generate key */
+.hider {display: inline;} 
+.hider2 {display: none;} 
+
+</style>
+
+
+---
+output: html_document
+---
+
+<img src="../Logo.png" style="position:absolute;top:10px;right:125px;width:150px;height=150px" />
+
+### `r fileName="../Title.txt";readChar(fileName,file.info(fileName)$size)`
+#### Writing regression models
+#### `r format(Sys.Date(), format="%B %d, %Y")`
+
+- - -
+
+
+```{r preliminaries, include = FALSE}
+rm(list = ls())
+library(knitr)
+knitr::opts_chunk$set(cache = FALSE, warnings = FALSE, tidy = FALSE)
+
+# uncomment out this to generate key
+ nokey = FALSE; key = TRUE
+
+# uncomment out this to generate exercise
+# nokey = TRUE; key = FALSE
+
+set.seed(1)
+```
+
+<br>
+
+1. You have binary observations on voting of $n$ individuals during the 2016 democratic presidential primary.  Data are a 1 for individuals who voted for Bernie Sanders and a 0 for those who voted for Hillary Clinton. You also have data on each individual's age in years. Write a model representing the probability that an individual voted for Sanders as a fucntion of his or her age. There are two possible likelihoods, both correct. However, one is much faster to converge than than the other whenever the sample size is large. What are these likelihoods? Write JAGS code to implement the model and compute a derived quantity necessary for plotting the median and credible intervals on the probability of a Sanders vote as a function of voter age.
+
+<div class="hider">
+\begin{align}
+g(\boldsymbol{\beta}, x_i)&=\text{inverse logit}(\beta_0+\beta_1x_i)\\
+[\boldsymbol{\beta}\mid \mathbf{y}]&\propto\prod_{i=1}^n[y_i|g(\boldsymbol{\beta}, x_i)][\boldsymbol{\beta}]\\
+y_i&\sim\text{Bernoulli}\big(g(\boldsymbol{\beta}, x_i)\big)\\
+\beta_0&\sim\text{normal}(0,0.27)\\
+\beta_1&\sim\text{normal}(0,0.27)\\ 
+\end{align}
+</div>
+
+<br>
+
+```{r,eval=FALSE,echo=key}
+model{
+  beta[1] ~ dnorm(0,3.68) #vague precision for inverse logit coefficients
+  beta[2] ~ dnorm(0,3.68)
+  for(i in 1 : length(y)){
+    y[i] ~ dbern(ilogit(beta[1] + beta[2] * x[i]))
+  #You could also write:
+  #y[i] ~ dbern(p[i]) #note no prior on p[i] because it is deterministic.
+  } 
+  #derived quantity useful for plotting from JAGS object on R side
+  p[i] <- ilogit(beta[1] + beta[2] * x[i])
+}
+```
+<div class="hider">
+
+<br>
+
+An binomial likelihood will converge much more quickly than a Bernoulli if the sample size is large. It will give the same result as long as the predictor variables can be sensibly summed grouped and the responses summed by group. (Why is the result the same?) You can use the binomial here because the summed Sanders votes can be grouped by age. The data in this case are the number of Sanders votes ($y_i$, the number of successes) and the total number of votes ($n_j$, the number of trials) for each of $J$ ages:
+
+\begin{align}
+g(\boldsymbol{\beta}, x_j)&=\text{inverse logit}(\beta_0+\beta_1x_j)\\
+[\boldsymbol{\beta}\mid \mathbf{y}]&\propto\prod_{j=1}^J[y_j \mid n_j,g(\boldsymbol{\beta}, x_j)][\boldsymbol{\beta}]\\
+y_j&\sim\text{binomial}\big(n_j,g(\boldsymbol{\beta}, x_j)\big)\\
+\beta_0&\sim\text{normal}(0,0.27)\\
+\beta_1&\sim\text{normal}(0,0.27)\\ 
+\end{align}
+</div>
+
+<br>
+
+2. How could you modify this model to explicitly separate sampling variance from process variance? Hint -- think hierarchically.
+
+<div class="hider">
+You could make the model hierarchical using:
+\begin{align}
+[\boldsymbol{\beta},p_i, \sigma \mid y_i]&\propto[y_i\,\mid\, p_i][\text{logit}(p_i)\mid \beta_0,\beta_1, \sigma^2][\boldsymbol{\beta}][\sigma]\\
+y_i&\sim \text{Bernoulli}(p_i)\\
+\text{logit}(p_i) &\sim \text{normal}\big(\beta_0+\beta_1x_i, \sigma^2\big)\\
+\beta_0&\sim\text{normal}(0,3.68)\\
+\beta_1&\sim\text{normal}(0,3.68)\\ 
+\sigma&\sim\text{uniform}(0,10E9)
+\end{align}
+
+How would you interpret this model? What is $p_i$? What does $\sigma^2$ represent? Is there observation variance in this model? If so, where is it? What alternative distribution could you use for the logit transformed normal distribution? 
+
+</div>
+
+<br>
+
+3. Suppose that you wanted to model probability of voting for Sanders as a function of age, income, and an age by income interaction. Every individual has his or her own income value.  What likelihood would you use in this case?  Why?
+
+<div class="hider">
+
+You must use the Bernoulli in this case because you have different covariate values for every _individual_.  The binomial will not work in this case because the income data cannot be grouped by age. The Bernoulli is required for binary data when each response has a unique-valued predictor variable. The binomial can be used when responses can be sensibly summed.
+</div>
+
+<br>
+
+4. Develop a two parameter, asymptotic model of average income in a county predicted by county population size for 500 counties. Start by writing a  model with a single variance term, properly considering the support of the response variable, which is strictly non-negative. Assume average income and county population size are perfectly observed. Write corresponding JAGS code.  Why would you want to center or standardize the data in this case? What other distributions could you use for the likelihood? Justify your choice of prior values?
+
+<div class = "hider">
+\begin{align}
+g(\alpha, \gamma, x_{j}) &= \frac{\alpha x_{j}}{\gamma+x_{j}}\\
+[\alpha,\gamma,\sigma^{2}\mid\boldsymbol{y}] &\propto\prod_{j=1}^{500}[y_{j} \mid g(\alpha, \gamma, x_{j}),\sigma^2][\alpha][\gamma][\sigma^{2}]\\
+y_{j}&\sim\text{lognormal}(\log(g(\alpha, \gamma, x_{j})),\sigma^2)\\
+&\times\,\text{appropriate priors}
+\end{align}
+</div>
+```{r, echo=key, eval=FALSE}
+model{
+  alpha ~ dnorm(500000, .000000001) # weakly informative priors
+  gamma ~ dnorm(0, .000001) # gamma is half saturation constant
+  sigma ~ dunif(0, 10) 
+  tau <- 1/sigma^2
+  for(j in 1:500){
+    mu[j] <- alpha*x[j]/(gamma+x[j]) #x[j] standardized on R side
+    #might need to keep m[j] non-negative using instead of line above
+    #mu[j] <- max(.0001,alpha*x[j]/(gamma+x[j]))
+    y[j] ~ dlnorm(log(mu[j]),tau) #What is the interpretaion of tau?
+  }
+}
+```
+<div class="hider">
+Centering or standardizing the data assures that the interpretation of the intercept is useful -- income at the average population size.  Income at zero population for a county is nonsense.  You could also use a moment matched gamma distribution
+$$y_j\sim \text{gamma} \left(\frac{g(\alpha, \gamma, x_{j})^2}{\sigma^2},\frac{g(\alpha, \gamma, x_{j})}{\sigma^2}\right),$$
+
+or a normal distribution where income is logged:
+
+$$\log(y_{j})\sim\text{normal}(\log(g(\alpha, \gamma, x_{j})),\sigma^2).$$
+</div>
+
+<br>
+
+5. Presume you have 1000 observations of income in each of the 500 counties. You seek to approximate sampling variance separately from process variance.  Write a model and corresponding JAGS code that achieves this separation. You must again think hierarchically.
+
+<div class = "hider">
+\begin{align}
+g(\alpha, \gamma, x_{j}) &= \frac{\alpha x_{j}}{\gamma+x_{j}}\\
+[\alpha,\gamma,\sigma^2_{p},\sigma^2_{o}, \boldsymbol{\mu}\mid\boldsymbol{Y}] &\propto\prod_{i=1}^{1000}\prod_{j=1}^{500}[y_{ij}\mid \mu_{j},\sigma^2_o][\mu_j \mid g(\alpha, \gamma, x_{j}),\sigma_p^2][\alpha][\gamma][\sigma_p^2][\sigma_o^2]\\
+y_{ij} &\sim \text{gamma}\left(\frac{\mu_j^2}{\sigma_o^2},\frac{\mu_j}{\sigma_o^2}\right)\\
+\mu_j& \sim \text{gamma}\left(\frac{g(\alpha, \gamma, x_{j})^2}{\sigma_p^2},\frac{g(\alpha, \gamma, x_{j})}{\sigma_p^2}\right)\\
+&\times \,\text{appropriate priors}
+\end{align}
+</div>
+
+```{r, eval=FALSE,echo=key}
+model{
+  alpha ~ dnorm(500000,.0001) #weakly informative priors
+  gamma ~ dnorm(0,.001)
+  sigma.p ~ dunif(0,10e6)
+  sigma.o ~ dunif(0,10e6)
+  for(j in 1:500){
+     g[j] <- alpha*x[j]/(gamma+x[j])
+     mu[j] ~ dgamma(g[j]^2/sigma.p^2,g[j]/sigma.p^2)
+    for(i in 1:1000)
+      # This assumes y is a matrix with 1000 rows and 500 columns
+      # We will learn a better way soon!
+       y[ij] ~ dgamma(mu[j]^2/sigma.o^2, mu[j],sigma.o^2)
+  }
+}
+```
+
+<br>
+
+6. You use remote sensing to observe the proportion of forest burned  ($y_i$ in hectares burned per total hectares) in $n$ forest stands indexed by $i$.  You have a corresponding elevation at the stand centroid and a stand wetness index, the number of pixels that drain into the cetnroid of the stand. Heroically assume predictor variables are measured perfectly. Construct a model for the effect of elevation and wetness and their interaction on proportion of the stand burned. Write corresponding JAGS code presuming the predictor variables are stored in a matrix with $n$ rows and two columns.
+
+<div class ="hider">
+\begin{align}
+g(\boldsymbol{\beta},\mathbf{x}_i)&=\beta_0+\beta_1x_{1,i}+\beta_2x_{2,i}+\beta_3x_{1,i}x_{2,i}\\
+[\boldsymbol{\beta},\sigma^2\mid\mathbf{y}]&\propto \prod_{i=1}^n[y_i\mid g(\boldsymbol{\beta},\boldsymbol{x}_i),\sigma^2)]\\
+&\times \text{appropriate priors}\\
+y_i&\sim\text{beta}\big(m(g(\boldsymbol{\beta},\mathbf{x}_i)),\sigma^2)\big)\\
+\end{align}
+
+where $m()$ is a the function returning parameters of the beta distribution given the the first and second central moments.
+</div>
+
+<div class="hider">
+You could also use:
+
+$$\text{logit}(y_i) \sim \text{normal}\big(g(\boldsymbol{\beta},\mathbf{x}_i),\sigma^2\big)$$
+for the likelihood.
+</div>
+
+```{r, echo=key, eval=FALSE}
+model{
+  for(j in 1:length(x[1,])){
+    beta[j] ~ dnorm(0,3.68) # vague prior for inverse logit
+  }
+  sigma ~ dunif(0,500)
+  for(i in 1:length(y)){
+      mu[i] <- beta[1] + beta[2] * x[1,i] + beta[2] * x[2,i] + beta[3] * x[1,i] * x[2,i]
+    #Do moment matching
+      a[i] <-(mu[i]^2 - mu[i]^3 -mu[i] * sigma^2) / sigma^2
+	  b[i] <- (mu[i] - 2 * mu[i]^2 + mu[i]^3 - sigma^2 + mu[i] * sigma^2) / sigma^2
+	  #The likelihood
+	  y[i] ~ dbeta(a[i],b[i])
+  }
+}
+```
+
